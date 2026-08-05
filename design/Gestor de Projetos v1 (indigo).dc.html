@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#0B0D10; }
+  body { font-family: Inter, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color:#3B82F6; text-decoration:none; }
+  a:hover { color:#60A5FA; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:#262B33; border-radius:99px; border:3px solid #0B0D10; }
+  @keyframes gp-pulse { 0%,100% { opacity:1 } 50% { opacity:.35 } }
+  @keyframes gp-rise { from { transform: translateY(16px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+  @keyframes gp-sheet { from { transform: translateY(100%) } to { transform: translateY(0) } }
+  @keyframes gp-fade { from { opacity:0 } to { opacity:1 } }
+  textarea::placeholder, input::placeholder { color:#4B5563; }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; width:100%; background:#0B0D10; color:#E8EAED; overflow:hidden">
+
+  <sc-if value="{{ showSidebar }}" hint-placeholder-val="{{ true }}">
+    <aside style="width:248px; flex:none; height:100%; border-right:1px solid #262B33; background:#0B0D10; display:flex; flex-direction:column; padding:24px 12px 16px">
+      <div style="padding:0 12px 20px; display:flex; align-items:center; gap:10px">
+        <div style="width:26px; height:26px; border-radius:8px; background:#6366F1; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#fff">G</div>
+        <div style="font-size:14px; font-weight:600; letter-spacing:-0.01em">Gestor</div>
+      </div>
+      <nav style="display:flex; flex-direction:column; gap:2px">
+        <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+          <button onClick="{{ n.go }}" style="display:flex; align-items:center; gap:12px; height:44px; padding:0 12px; border:none; border-radius:10px; background:{{ n.bg }}; color:{{ n.fg }}; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; text-align:left; transition:background 150ms ease-out" style-hover="background:#20242C">
+            <span style="width:20px; height:20px; display:flex; align-items:center; justify-content:center">{{ n.icon }}</span>
+            {{ n.label }}
+          </button>
+        </sc-for>
+      </nav>
+      <button onClick="{{ openComposer }}" style="margin:16px 0 24px; height:44px; border-radius:10px; border:none; background:#6366F1; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:background 150ms ease-out" style-hover="background:#4F46E5">+ Nova tarefa</button>
+      <div style="padding:0 12px 8px; font-size:12px; color:#6B7280; font-weight:500; letter-spacing:0.04em; text-transform:uppercase">Projetos</div>
+      <div style="overflow:auto; display:flex; flex-direction:column; gap:1px">
+        <sc-for list="{{ sideProjects }}" as="p" hint-placeholder-count="6">
+          <button onClick="{{ p.open }}" style="display:flex; align-items:center; gap:10px; min-height:36px; padding:0 12px; border:none; border-radius:8px; background:transparent; color:#9BA3AF; font-family:inherit; font-size:13px; cursor:pointer; text-align:left; transition:background 150ms ease-out" style-hover="background:#14171C">
+            <span style="width:7px; height:7px; border-radius:99px; flex:none; background:{{ p.dot }}"></span>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ p.name }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </aside>
+  </sc-if>
+
+  <main style="flex:1; min-width:0; height:100%; display:flex; flex-direction:column; position:relative">
+
+    <sc-if value="{{ showChrome }}" hint-placeholder-val="{{ true }}">
+      <div style="position:sticky; top:0; z-index:6; background:#0B0D10; border-bottom:1px solid #262B33; padding:10px 16px 12px">
+        <button onClick="{{ goCota }}" style="width:100%; border:none; background:transparent; padding:0; cursor:pointer; font-family:inherit; display:block; text-align:left">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:7px">
+            <span style="font-size:12px; color:#9BA3AF; font-weight:500">Cota semanal · {{ quota.pctText }}</span>
+            <span style="font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ quota.reset }}</span>
+          </div>
+          <div style="position:relative; height:6px; border-radius:99px; background:#1B1F26; overflow:hidden">
+            <div style="height:100%; border-radius:99px; transition:width 200ms ease-out, background 200ms ease-out; width:{{ quota.fill }}; background:{{ quota.color }}"></div>
+            <div style="position:absolute; top:0; right:0; height:100%; width:15%; border-left:1px dashed #4B5563; background:repeating-linear-gradient(135deg, rgba(107,114,128,.28) 0 2px, transparent 2px 5px)"></div>
+          </div>
+        </button>
+        <sc-if value="{{ quota.warn }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; align-items:center; gap:8px; margin-top:9px; font-size:12px; color:#F04438; font-weight:500">
+            <span style="width:14px; height:14px; border-radius:99px; border:1px solid #F04438; display:flex; align-items:center; justify-content:center; font-size:9px; flex:none">!</span>
+            {{ quota.warnText }}
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ demo.vpsError }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; background:#1B1F26; border-bottom:1px solid #262B33; font-size:13px; color:#9BA3AF">
+        <span style="width:8px; height:8px; border-radius:99px; background:#F04438; flex:none; animation:gp-pulse 1.6s ease-in-out infinite"></span>
+        <span style="flex:1">Sem conexão com a VPS. Mostrando dados salvos.</span>
+        <button onClick="{{ retryVps }}" style="border:1px solid #3A4150; background:transparent; color:#E8EAED; height:32px; padding:0 12px; border-radius:8px; font-family:inherit; font-size:12px; cursor:pointer">Tentar</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ demo.offline }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:8px 16px; background:#14171C; border-bottom:1px solid #262B33; font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">offline · dados de 23:41</div>
+    </sc-if>
+
+    <div style="flex:1; overflow:auto; padding-bottom:{{ scrollPad }}">
+
+      <!-- ============ BOARD ============ -->
+      <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:20px 16px 8px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap">
+          <div>
+            <h1 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em; line-height:1.2">Board</h1>
+            <div style="margin-top:6px; font-size:14px; color:#9BA3AF">{{ boardSubtitle }}</div>
+          </div>
+          <div style="display:flex; gap:2px; padding:3px; background:#14171C; border:1px solid #262B33; border-radius:10px">
+            <button onClick="{{ setGrupos }}" style="height:34px; padding:0 14px; border:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; transition:background 150ms ease-out; background:{{ variantA.bg }}; color:{{ variantA.fg }}">Grupos</button>
+            <button onClick="{{ setFluxo }}" style="height:34px; padding:0 14px; border:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; transition:background 150ms ease-out; background:{{ variantB.bg }}; color:{{ variantB.fg }}">Fluxo</button>
+          </div>
+        </div>
+
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:64px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px">
+            <div style="width:96px; height:96px; border-radius:20px; border:1px dashed #262B33; display:flex; align-items:center; justify-content:center; margin-bottom:12px">
+              <div style="width:34px; height:34px; border-radius:10px; border:2px solid #3A4150"></div>
+            </div>
+            <div style="font-size:18px; font-weight:500">Nenhum projeto ainda</div>
+            <div style="font-size:14px; color:#9BA3AF; max-width:280px; text-wrap:pretty">Conecte um repositório para o agente começar a acompanhar o status.</div>
+            <button onClick="{{ goConfig }}" style="margin-top:16px; height:44px; padding:0 20px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer">Cadastrar primeiro projeto</button>
+          </div>
+        </sc-if>
+
+        <!-- variante A: grupos -->
+        <sc-if value="{{ showGrupos }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:8px 16px 0">
+            <div style="display:flex; align-items:center; gap:8px; padding:16px 2px 10px">
+              <span style="width:8px; height:8px; border-radius:99px; background:#F04438"></span>
+              <span style="font-size:13px; font-weight:600; letter-spacing:0.02em; text-transform:uppercase; color:#E8EAED">Precisa de você</span>
+              <span style="font-size:13px; color:#6B7280">{{ counts.attention }}</span>
+            </div>
+            <div style="display:grid; gap:12px; grid-template-columns:{{ gridCols }}">
+              <sc-for list="{{ attentionCards }}" as="c" hint-placeholder-count="2">
+                <article style="background:#14171C; border:1px solid #F0443840; border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px; animation:gp-fade 200ms ease-out">
+                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                    <div style="min-width:0">
+                      <div style="font-size:18px; font-weight:500; letter-spacing:-0.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ c.name }}</div>
+                      <div style="margin-top:4px; font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ c.repo }}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px; height:26px; padding:0 10px; border-radius:6px; flex:none; background:{{ c.badgeBg }}; color:{{ c.badgeFg }}; font-size:12px; font-weight:500">
+                      <span>{{ c.badgeIcon }}</span>{{ c.badgeLabel }}
+                    </div>
+                  </div>
+                  <p style="margin:0; font-size:14px; line-height:1.45; color:#9BA3AF; text-wrap:pretty">{{ c.summary }}</p>
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+                    <span style="font-size:12px; color:#6B7280">{{ c.when }}</span>
+                    <div style="display:flex; gap:8px">
+                      <button onClick="{{ c.menu }}" style="width:44px; height:44px; border:1px solid #262B33; border-radius:10px; background:transparent; color:#9BA3AF; font-size:16px; cursor:pointer; font-family:inherit" style-hover="background:#20242C">⋯</button>
+                      <button onClick="{{ c.primary }}" style="height:44px; padding:0 18px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:background 150ms ease-out" style-hover="background:#4F46E5">{{ c.action }}</button>
+                    </div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px; padding:26px 2px 10px">
+              <span style="width:8px; height:8px; border-radius:99px; background:#F5A623"></span>
+              <span style="font-size:13px; font-weight:600; letter-spacing:0.02em; text-transform:uppercase; color:#E8EAED">Rodando agora</span>
+              <span style="font-size:13px; color:#6B7280">{{ counts.running }}</span>
+            </div>
+            <div style="display:grid; gap:12px; grid-template-columns:{{ gridCols }}">
+              <sc-for list="{{ runningCards }}" as="c" hint-placeholder-count="2">
+                <article onClick="{{ c.primary }}" style="background:#14171C; border:1px solid #262B33; border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px; cursor:pointer; transition:background 150ms ease-out" style-hover="background:#171B21">
+                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                    <div style="min-width:0">
+                      <div style="font-size:18px; font-weight:500; letter-spacing:-0.01em">{{ c.name }}</div>
+                      <div style="margin-top:4px; font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ c.repo }}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px; height:26px; padding:0 10px; border-radius:6px; flex:none; background:#F5A62319; color:#F5A623; font-size:12px; font-weight:500">
+                      <span style="font-family:'JetBrains Mono', ui-monospace, monospace; width:9px; display:inline-block">{{ spin }}</span>Rodando
+                    </div>
+                  </div>
+                  <p style="margin:0; font-size:14px; line-height:1.45; color:#9BA3AF; text-wrap:pretty">{{ c.summary }}</p>
+                  <div style="display:flex; align-items:center; gap:10px">
+                    <div style="flex:1; height:4px; border-radius:99px; background:#1B1F26; overflow:hidden">
+                      <div style="height:100%; background:#F5A623; border-radius:99px; transition:width 400ms ease-out; width:{{ c.progress }}"></div>
+                    </div>
+                    <span style="font-size:12px; color:#6B7280; white-space:nowrap">{{ c.stepText }}</span>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+
+            <button onClick="{{ toggleHealthy }}" style="display:flex; align-items:center; gap:8px; width:100%; min-height:44px; padding:26px 2px 10px; border:none; background:transparent; cursor:pointer; font-family:inherit">
+              <span style="width:8px; height:8px; border-radius:99px; background:#6B7280"></span>
+              <span style="font-size:13px; font-weight:600; letter-spacing:0.02em; text-transform:uppercase; color:#E8EAED">Em dia</span>
+              <span style="font-size:13px; color:#6B7280">{{ counts.healthy }}</span>
+              <span style="margin-left:auto; font-size:12px; color:#6B7280">{{ healthyToggleLabel }}</span>
+            </button>
+            <sc-if value="{{ healthyOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid; gap:8px; grid-template-columns:{{ compactCols }}; padding-bottom:8px">
+                <sc-for list="{{ healthyCards }}" as="c" hint-placeholder-count="3">
+                  <button onClick="{{ c.primary }}" style="display:flex; align-items:center; gap:10px; min-height:48px; padding:0 14px; background:#14171C; border:1px solid #262B33; border-radius:10px; cursor:pointer; font-family:inherit; text-align:left; transition:background 150ms ease-out" style-hover="background:#20242C">
+                    <span style="font-size:12px; flex:none; color:{{ c.badgeFg }}">{{ c.badgeIcon }}</span>
+                    <span style="font-size:14px; color:#E8EAED; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ c.name }}</span>
+                    <span style="margin-left:auto; font-size:12px; color:#6B7280; white-space:nowrap">{{ c.when }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- variante B: fluxo -->
+        <sc-if value="{{ showFluxo }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:12px 16px 0">
+            <div style="border:1px solid #262B33; border-radius:14px; overflow:hidden; background:#14171C">
+              <sc-for list="{{ flowCards }}" as="c" hint-placeholder-count="7">
+                <button onClick="{{ c.primary }}" style="display:flex; align-items:center; gap:12px; width:100%; min-height:64px; padding:12px 14px; background:transparent; border:none; border-bottom:1px solid #1B1F26; cursor:pointer; font-family:inherit; text-align:left; transition:background 150ms ease-out" style-hover="background:#20242C">
+                  <span style="width:10px; height:10px; border-radius:99px; flex:none; background:{{ c.badgeFg }}"></span>
+                  <span style="flex:1; min-width:0">
+                    <span style="display:flex; align-items:baseline; gap:8px">
+                      <span style="font-size:15px; font-weight:500; color:#E8EAED; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ c.name }}</span>
+                      <span style="font-size:12px; color:{{ c.badgeFg }}; white-space:nowrap">{{ c.badgeLabel }}</span>
+                    </span>
+                    <span style="display:block; margin-top:3px; font-size:13px; color:#9BA3AF; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ c.summary }}</span>
+                  </span>
+                  <span style="font-size:12px; color:#6B7280; white-space:nowrap; flex:none">{{ c.when }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="padding:12px 2px; font-size:12px; color:#6B7280; text-wrap:pretty">Ordenado por urgência. Toque para abrir direto na ação pendente.</div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ============ PROJETO ============ -->
+      <sc-if value="{{ isProjeto }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 16px 0">
+          <button onClick="{{ goBoard }}" style="display:flex; align-items:center; gap:8px; height:44px; padding:0 12px 0 8px; margin-left:-8px; border:none; background:transparent; color:#9BA3AF; font-family:inherit; font-size:14px; cursor:pointer; border-radius:10px" style-hover="background:#14171C">← Board</button>
+          <div style="margin-top:8px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap">
+            <div>
+              <h1 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em; line-height:1.2">{{ proj.name }}</h1>
+              <div style="margin-top:6px; font-size:13px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ proj.repo }} · {{ proj.stack }}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; height:28px; padding:0 12px; border-radius:6px; background:{{ proj.badgeBg }}; color:{{ proj.badgeFg }}; font-size:13px; font-weight:500">
+              <span>{{ proj.badgeIcon }}</span>{{ proj.badgeLabel }}
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:16px">
+            <button onClick="{{ openComposer }}" style="flex:1; height:44px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer" style-hover="background:#4F46E5">Nova tarefa aqui</button>
+            <button onClick="{{ goConfig }}" style="width:44px; height:44px; border:1px solid #262B33; border-radius:10px; background:transparent; color:#9BA3AF; font-size:16px; cursor:pointer; font-family:inherit" style-hover="background:#20242C">⚙</button>
+          </div>
+
+          <div style="margin-top:24px; display:grid; gap:8px; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr))">
+            <sc-for list="{{ proj.metrics }}" as="m" hint-placeholder-count="6">
+              <div style="background:#14171C; border:1px solid #262B33; border-radius:10px; padding:12px 14px">
+                <div style="font-size:12px; color:#6B7280">{{ m.label }}</div>
+                <div style="margin-top:5px; font-size:15px; font-weight:500; font-family:'JetBrains Mono', ui-monospace, monospace; color:{{ m.color }}">{{ m.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:28px; font-size:22px; font-weight:600; letter-spacing:-0.01em">Histórico de runs</div>
+          <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px">
+            <sc-for list="{{ proj.runs }}" as="r" hint-placeholder-count="4">
+              <button onClick="{{ r.open }}" style="display:flex; align-items:center; gap:12px; width:100%; min-height:60px; padding:12px 14px; background:#14171C; border:1px solid #262B33; border-radius:10px; cursor:pointer; font-family:inherit; text-align:left; transition:background 150ms ease-out" style-hover="background:#20242C">
+                <span style="width:20px; flex:none; text-align:center; font-size:13px; color:{{ r.color }}; font-family:'JetBrains Mono', ui-monospace, monospace">{{ r.icon }}</span>
+                <span style="flex:1; min-width:0">
+                  <span style="display:block; font-size:14px; color:#E8EAED; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ r.title }}</span>
+                  <span style="display:block; margin-top:3px; font-size:12px; color:#6B7280">{{ r.meta }}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ RUN ============ -->
+      <sc-if value="{{ isRun }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 16px 0">
+          <button onClick="{{ back }}" style="display:flex; align-items:center; gap:8px; height:44px; padding:0 12px 0 8px; margin-left:-8px; border:none; background:transparent; color:#9BA3AF; font-family:inherit; font-size:14px; cursor:pointer; border-radius:10px" style-hover="background:#14171C">← Voltar</button>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:10px">
+            <span style="font-size:13px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ run.repo }}</span>
+            <span style="display:flex; align-items:center; gap:6px; height:24px; padding:0 10px; border-radius:6px; background:{{ run.badgeBg }}; color:{{ run.badgeFg }}; font-size:12px; font-weight:500">
+              <span style="font-family:'JetBrains Mono', ui-monospace, monospace">{{ run.badgeIcon }}</span>{{ run.badgeLabel }}
+            </span>
+          </div>
+          <h1 style="margin:10px 0 0; font-size:22px; font-weight:600; letter-spacing:-0.01em; line-height:1.3; text-wrap:pretty">{{ run.instruction }}</h1>
+          <div style="margin-top:6px; font-size:13px; color:#6B7280">{{ run.meta }}</div>
+
+          <div style="margin-top:24px; display:flex; flex-direction:column">
+            <sc-for list="{{ run.steps }}" as="s" hint-placeholder-count="6">
+              <div style="display:flex; gap:14px">
+                <div style="display:flex; flex-direction:column; align-items:center; width:20px; flex:none">
+                  <span style="font-size:13px; line-height:22px; font-family:'JetBrains Mono', ui-monospace, monospace; color:{{ s.color }}">{{ s.icon }}</span>
+                  <span style="flex:1; width:1px; background:#262B33; min-height:12px"></span>
+                </div>
+                <div style="flex:1; min-width:0; padding-bottom:16px">
+                  <button onClick="{{ s.toggle }}" style="display:flex; align-items:center; gap:12px; width:100%; min-height:22px; padding:0; border:none; background:transparent; cursor:pointer; font-family:inherit; text-align:left">
+                    <span style="flex:1; font-size:14px; line-height:1.45; color:{{ s.textColor }}; text-wrap:pretty">{{ s.label }}</span>
+                    <span style="font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace; flex:none">{{ s.dur }}</span>
+                  </button>
+                  <sc-if value="{{ s.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:10px; padding:12px 14px; background:#14171C; border:1px solid #262B33; border-radius:10px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px; line-height:1.7; color:#9BA3AF; white-space:pre-wrap; overflow:auto">{{ s.detail }}</div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ run.showDiffBtn }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ goDiff }}" style="width:100%; height:48px; margin-top:8px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer" style-hover="background:#4F46E5">Ver diff ({{ run.filesText }})</button>
+          </sc-if>
+          <sc-if value="{{ run.failed }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:8px; padding:16px; border:1px solid #F0443840; background:#14171C; border-radius:14px">
+              <div style="font-size:14px; line-height:1.5; color:#E8EAED; text-wrap:pretty">{{ run.errorText }}</div>
+              <div style="display:flex; gap:8px; margin-top:14px">
+                <button onClick="{{ retryRun }}" style="flex:1; height:44px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer">Tentar de novo</button>
+                <button onClick="{{ openComposer }}" style="flex:1; height:44px; border:1px solid #3A4150; border-radius:10px; background:transparent; color:#E8EAED; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer">Editar instrução</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ============ DIFF ============ -->
+      <sc-if value="{{ isDiff }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:14px 16px 0">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+            <button onClick="{{ back }}" style="width:44px; height:44px; margin-left:-10px; border:none; background:transparent; color:#9BA3AF; font-size:18px; cursor:pointer; font-family:inherit; border-radius:10px" style-hover="background:#14171C">←</button>
+            <div style="flex:1; min-width:0; text-align:center">
+              <div style="font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ diff.title }}</div>
+              <div style="font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ diff.branch }}</div>
+            </div>
+            <div style="width:44px"></div>
+          </div>
+          <div style="display:flex; gap:14px; margin-top:10px; font-size:12px; font-family:'JetBrains Mono', ui-monospace, monospace">
+            <span style="color:#22C55E">+{{ diff.added }}</span>
+            <span style="color:#F04438">−{{ diff.removed }}</span>
+            <span style="color:#6B7280">{{ diff.filesText }}</span>
+          </div>
+          <div style="margin-top:16px; display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{ diff.files }}" as="f" hint-placeholder-count="3">
+              <div style="border:1px solid #262B33; border-radius:10px; overflow:hidden; background:#14171C">
+                <button onClick="{{ f.toggle }}" style="display:flex; align-items:center; gap:10px; width:100%; min-height:48px; padding:0 14px; background:transparent; border:none; cursor:pointer; font-family:inherit; text-align:left">
+                  <span style="font-size:11px; color:#6B7280; width:10px; flex:none">{{ f.caret }}</span>
+                  <span style="flex:1; min-width:0; font-size:13px; font-family:'JetBrains Mono', ui-monospace, monospace; color:#E8EAED; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ f.path }}</span>
+                  <span style="font-size:12px; font-family:'JetBrains Mono', ui-monospace, monospace; color:#22C55E; flex:none">{{ f.plus }}</span>
+                  <span style="font-size:12px; font-family:'JetBrains Mono', ui-monospace, monospace; color:#F04438; flex:none">{{ f.minus }}</span>
+                </button>
+                <sc-if value="{{ f.open }}" hint-placeholder-val="{{ true }}">
+                  <div style="border-top:1px solid #262B33; overflow-x:auto">
+                    <sc-for list="{{ f.lines }}" as="l" hint-placeholder-count="8">
+                      <div style="display:flex; gap:12px; padding:2px 14px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px; line-height:1.65; white-space:pre; background:{{ l.bg }}">
+                        <span style="color:#4B5563; width:28px; flex:none; text-align:right">{{ l.n }}</span>
+                        <span style="color:{{ l.color }}">{{ l.text }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="position:sticky; bottom:0; margin-top:16px; padding:12px 16px calc(14px + env(safe-area-inset-bottom)); background:#0B0D10; border-top:1px solid #262B33; display:flex; gap:8px; align-items:center">
+          <button onClick="{{ discard }}" style="height:48px; padding:0 14px; border:none; background:transparent; color:#F04438; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; border-radius:10px" style-hover="background:#20242C">Descartar</button>
+          <button onClick="{{ requestChanges }}" style="flex:1; height:48px; border:1px solid #3A4150; border-radius:10px; background:transparent; color:#E8EAED; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer" style-hover="background:#20242C">Pedir ajustes</button>
+          <button onClick="{{ approve }}" style="flex:1.4; height:48px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer" style-hover="background:#4F46E5">Aprovar e abrir PR</button>
+        </div>
+      </sc-if>
+
+      <!-- ============ FILA ============ -->
+      <sc-if value="{{ isFila }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:20px 16px 0">
+          <h1 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em; line-height:1.2">Fila</h1>
+          <div style="margin-top:6px; font-size:14px; color:#9BA3AF">{{ queueSubtitle }}</div>
+          <sc-if value="{{ queueEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:48px; padding:40px 20px; text-align:center; border:1px dashed #262B33; border-radius:14px">
+              <div style="font-size:15px; color:#9BA3AF">Nenhuma tarefa pendente.</div>
+              <div style="margin-top:6px; font-size:13px; color:#6B7280">A fila noturna roda às 02:00.</div>
+            </div>
+          </sc-if>
+          <div style="margin-top:16px; display:flex; flex-direction:column; gap:8px">
+            <sc-for list="{{ queue }}" as="q" hint-placeholder-count="4">
+              <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:#14171C; border:1px solid #262B33; border-radius:10px">
+                <span style="width:22px; flex:none; font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ q.pos }}</span>
+                <div style="flex:1; min-width:0">
+                  <div style="display:flex; align-items:baseline; gap:8px">
+                    <span style="font-size:14px; font-weight:500; color:#E8EAED">{{ q.project }}</span>
+                    <span style="font-size:12px; color:{{ q.urgColor }}">{{ q.urgency }}</span>
+                  </div>
+                  <div style="margin-top:3px; font-size:13px; color:#9BA3AF; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ q.text }}</div>
+                </div>
+                <button onClick="{{ q.cancel }}" style="width:44px; height:44px; flex:none; border:none; background:transparent; color:#6B7280; font-size:15px; cursor:pointer; font-family:inherit; border-radius:10px" style-hover="background:#20242C; color:#F04438">✕</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ COTA ============ -->
+      <sc-if value="{{ isCota }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:20px 16px 0">
+          <h1 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em; line-height:1.2">Cota</h1>
+          <div style="margin-top:6px; font-size:14px; color:#9BA3AF">{{ quota.projection }}</div>
+
+          <div style="margin-top:20px; padding:18px 16px; background:#14171C; border:1px solid #262B33; border-radius:14px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-size:28px; font-weight:600; letter-spacing:-0.02em; color:{{ quota.color }}">{{ quota.pctText }}</span>
+              <span style="font-size:13px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ quota.reset }}</span>
+            </div>
+            <div style="position:relative; height:10px; margin-top:14px; border-radius:99px; background:#1B1F26; overflow:hidden">
+              <div style="height:100%; border-radius:99px; transition:width 200ms ease-out; width:{{ quota.fill }}; background:{{ quota.color }}"></div>
+              <div style="position:absolute; top:0; right:0; height:100%; width:15%; border-left:1px dashed #4B5563; background:repeating-linear-gradient(135deg, rgba(107,114,128,.28) 0 2px, transparent 2px 5px)"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:#6B7280">
+              <span>consumido</span><span>reserva pessoal 15%</span>
+            </div>
+            <sc-if value="{{ quota.warn }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:14px; padding:12px 14px; border-radius:10px; background:#F0443814; font-size:13px; line-height:1.5; color:#F04438; text-wrap:pretty">{{ quota.warnText }}</div>
+            </sc-if>
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:2px; padding:3px; background:#14171C; border:1px solid #262B33; border-radius:10px">
+            <sc-for list="{{ quotaModes }}" as="m" hint-placeholder-count="3">
+              <button onClick="{{ m.set }}" style="flex:1; height:38px; border:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; background:{{ m.bg }}; color:{{ m.fg }}">{{ m.label }}</button>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:28px; font-size:22px; font-weight:600; letter-spacing:-0.01em">Consumo por projeto</div>
+          <div style="margin-top:14px; display:flex; flex-direction:column; gap:14px">
+            <sc-for list="{{ distribution }}" as="d" hint-placeholder-count="5">
+              <div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:14px">
+                  <span style="color:#E8EAED; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ d.name }}</span>
+                  <span style="color:#6B7280; font-size:12px; font-family:'JetBrains Mono', ui-monospace, monospace; flex:none">{{ d.pct }}</span>
+                </div>
+                <div style="height:6px; margin-top:7px; border-radius:99px; background:#1B1F26; overflow:hidden">
+                  <div style="height:100%; border-radius:99px; background:#6366F1; width:{{ d.pct }}"></div>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-top:9px">
+                  <span style="font-size:12px; color:#6B7280">Prioridade</span>
+                  <div style="display:flex; align-items:center; gap:8px">
+                    <button onClick="{{ d.dec }}" style="width:44px; height:44px; border:1px solid #262B33; border-radius:10px; background:transparent; color:#9BA3AF; font-size:16px; cursor:pointer; font-family:inherit" style-hover="background:#20242C">−</button>
+                    <span style="min-width:20px; text-align:center; font-size:14px; font-family:'JetBrains Mono', ui-monospace, monospace">{{ d.weight }}</span>
+                    <button onClick="{{ d.inc }}" style="width:44px; height:44px; border:1px solid #262B33; border-radius:10px; background:transparent; color:#9BA3AF; font-size:16px; cursor:pointer; font-family:inherit" style-hover="background:#20242C">+</button>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:28px; font-size:22px; font-weight:600; letter-spacing:-0.01em">Últimas 6 semanas</div>
+          <div style="margin-top:16px; display:flex; align-items:flex-end; gap:10px; height:120px">
+            <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="6">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end">
+                <div style="width:100%; border-radius:6px 6px 2px 2px; background:{{ w.color }}; height:{{ w.h }}"></div>
+                <span style="font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ w.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ CONFIG ============ -->
+      <sc-if value="{{ isConfig }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:20px 16px 0">
+          <h1 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em; line-height:1.2">Configurações</h1>
+
+          <div style="margin-top:24px; font-size:22px; font-weight:600; letter-spacing:-0.01em">Projetos</div>
+          <div style="margin-top:12px; border:1px solid #262B33; border-radius:14px; overflow:hidden; background:#14171C">
+            <sc-for list="{{ configProjects }}" as="p" hint-placeholder-count="6">
+              <button onClick="{{ p.open }}" style="display:flex; align-items:center; gap:12px; width:100%; min-height:56px; padding:10px 14px; background:transparent; border:none; border-bottom:1px solid #1B1F26; cursor:pointer; font-family:inherit; text-align:left" style-hover="background:#20242C">
+                <span style="flex:1; min-width:0">
+                  <span style="display:block; font-size:14px; color:#E8EAED">{{ p.name }}</span>
+                  <span style="display:block; margin-top:3px; font-size:12px; color:#6B7280; font-family:'JetBrains Mono', ui-monospace, monospace">{{ p.model }} · peso {{ p.weight }}</span>
+                </span>
+                <span style="color:#4B5563; font-size:14px">›</span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:28px; font-size:22px; font-weight:600; letter-spacing:-0.01em">Integrações</div>
+          <div style="margin-top:12px; border:1px solid #262B33; border-radius:14px; overflow:hidden; background:#14171C">
+            <sc-for list="{{ integrations }}" as="i" hint-placeholder-count="3">
+              <div style="display:flex; align-items:center; gap:12px; min-height:56px; padding:10px 14px; border-bottom:1px solid #1B1F26">
+                <span style="flex:1; font-size:14px; color:#E8EAED">{{ i.name }}</span>
+                <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:{{ i.color }}">{{ i.icon }} {{ i.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:28px; font-size:22px; font-weight:600; letter-spacing:-0.01em">Estados de demonstração</div>
+          <div style="margin-top:12px; border:1px solid #262B33; border-radius:14px; overflow:hidden; background:#14171C">
+            <sc-for list="{{ demoToggles }}" as="t" hint-placeholder-count="3">
+              <button onClick="{{ t.toggle }}" style="display:flex; align-items:center; gap:12px; width:100%; min-height:56px; padding:10px 14px; background:transparent; border:none; border-bottom:1px solid #1B1F26; cursor:pointer; font-family:inherit; text-align:left" style-hover="background:#20242C">
+                <span style="flex:1; min-width:0">
+                  <span style="display:block; font-size:14px; color:#E8EAED">{{ t.label }}</span>
+                  <span style="display:block; margin-top:3px; font-size:12px; color:#6B7280">{{ t.hint }}</span>
+                </span>
+                <span style="width:44px; height:26px; border-radius:99px; flex:none; position:relative; transition:background 150ms ease-out; background:{{ t.trackBg }}">
+                  <span style="position:absolute; top:3px; width:20px; height:20px; border-radius:99px; background:#E8EAED; transition:left 150ms ease-out; left:{{ t.knobLeft }}"></span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:28px; font-size:22px; font-weight:600; letter-spacing:-0.01em">Preferências</div>
+          <div style="margin-top:12px; margin-bottom:8px; border:1px solid #262B33; border-radius:14px; overflow:hidden; background:#14171C">
+            <div style="display:flex; align-items:center; min-height:56px; padding:10px 14px; border-bottom:1px solid #1B1F26">
+              <span style="flex:1; font-size:14px">Reserva pessoal de cota</span>
+              <span style="font-size:14px; color:#9BA3AF; font-family:'JetBrains Mono', ui-monospace, monospace">15%</span>
+            </div>
+            <div style="display:flex; align-items:center; min-height:56px; padding:10px 14px; border-bottom:1px solid #1B1F26">
+              <span style="flex:1; font-size:14px">Janela noturna</span>
+              <span style="font-size:14px; color:#9BA3AF; font-family:'JetBrains Mono', ui-monospace, monospace">02:00 – 06:00</span>
+            </div>
+            <div style="display:flex; align-items:center; min-height:56px; padding:10px 14px">
+              <span style="flex:1; font-size:14px">Tema</span>
+              <span style="font-size:14px; color:#6B7280">Escuro (padrão)</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+
+    <!-- ============ TAB BAR MOBILE ============ -->
+    <sc-if value="{{ showTabBar }}" hint-placeholder-val="{{ false }}">
+      <nav style="position:relative; flex:none; display:flex; align-items:stretch; border-top:1px solid #262B33; background:#0B0D10; padding-bottom:env(safe-area-inset-bottom)">
+        <sc-for list="{{ tabsLeft }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.go }}" style="flex:1; min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border:none; background:transparent; cursor:pointer; font-family:inherit; font-size:11px; color:{{ t.fg }}">
+            <span style="width:24px; height:24px; display:flex; align-items:center; justify-content:center">{{ t.icon }}</span>
+            {{ t.label }}
+          </button>
+        </sc-for>
+        <div style="width:76px; flex:none"></div>
+        <sc-for list="{{ tabsRight }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.go }}" style="flex:1; min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border:none; background:transparent; cursor:pointer; font-family:inherit; font-size:11px; color:{{ t.fg }}">
+            <span style="width:24px; height:24px; display:flex; align-items:center; justify-content:center">{{ t.icon }}</span>
+            {{ t.label }}
+          </button>
+        </sc-for>
+        <button onClick="{{ openComposer }}" aria-label="Nova tarefa" style="position:absolute; left:50%; top:-22px; margin-left:-28px; width:56px; height:56px; border-radius:20px; border:4px solid #0B0D10; background:#6366F1; color:#fff; font-size:24px; font-weight:400; line-height:1; cursor:pointer; font-family:inherit; box-shadow:0 8px 24px rgba(0,0,0,0.4); transition:background 150ms ease-out" style-hover="background:#4F46E5">+</button>
+      </nav>
+    </sc-if>
+
+    <!-- ============ TOAST ============ -->
+    <sc-if value="{{ toast.show }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; top:14px; left:16px; right:16px; z-index:30; display:flex; justify-content:center; pointer-events:none">
+        <div style="display:flex; align-items:center; gap:10px; max-width:420px; padding:12px 16px; border-radius:12px; background:#1B1F26; border:1px solid #3A4150; box-shadow:0 8px 24px rgba(0,0,0,0.4); font-size:14px; color:#E8EAED; animation:gp-rise 200ms ease-out">
+          <span style="color:#22C55E">✓</span>{{ toast.text }}
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ COMPOSER ============ -->
+    <sc-if value="{{ composerOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; inset:0; z-index:20; display:flex; flex-direction:column; justify-content:flex-end; background:rgba(0,0,0,0.55); animation:gp-fade 150ms ease-out">
+        <div onClick="{{ closeComposer }}" style="flex:1"></div>
+        <div style="background:#1B1F26; border-top:1px solid #3A4150; border-radius:20px 20px 0 0; padding:8px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow:0 -8px 24px rgba(0,0,0,0.4); animation:gp-sheet 200ms ease-out; max-height:92%; overflow:auto">
+          <div style="width:36px; height:4px; border-radius:99px; background:#3A4150; margin:6px auto 16px"></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px">
+            <div style="font-size:18px; font-weight:600; letter-spacing:-0.01em">Nova tarefa</div>
+            <button onClick="{{ closeComposer }}" style="width:44px; height:44px; margin-right:-10px; border:none; background:transparent; color:#9BA3AF; font-size:16px; cursor:pointer; font-family:inherit; border-radius:10px">✕</button>
+          </div>
+
+          <div style="font-size:12px; color:#6B7280; margin-bottom:8px">Projeto</div>
+          <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:16px">
+            <sc-for list="{{ composerProjects }}" as="p" hint-placeholder-count="5">
+              <button onClick="{{ p.pick }}" style="flex:none; height:44px; padding:0 14px; border-radius:10px; font-family:inherit; font-size:13px; cursor:pointer; white-space:nowrap; transition:background 150ms ease-out; background:{{ p.bg }}; color:{{ p.fg }}; border:1px solid {{ p.border }}">{{ p.name }}</button>
+            </sc-for>
+          </div>
+
+          <textarea value="{{ draft }}" onChange="{{ setDraft }}" rows="3" placeholder="O que o agente deve fazer?" style="width:100%; padding:14px; border-radius:10px; background:#14171C; border:1px solid #3A4150; color:#E8EAED; font-family:inherit; font-size:16px; line-height:1.5; resize:none; outline:none"></textarea>
+
+          <div style="display:flex; gap:8px; overflow-x:auto; padding:12px 0 4px">
+            <sc-for list="{{ shortcuts }}" as="s" hint-placeholder-count="4">
+              <button onClick="{{ s.pick }}" style="flex:none; height:36px; padding:0 12px; border-radius:6px; border:1px solid #262B33; background:#14171C; color:#9BA3AF; font-family:inherit; font-size:13px; cursor:pointer; white-space:nowrap" style-hover="background:#20242C; color:#E8EAED">{{ s.label }}</button>
+            </sc-for>
+          </div>
+
+          <div style="font-size:12px; color:#6B7280; margin:16px 0 8px">Urgência</div>
+          <div style="display:flex; gap:2px; padding:3px; background:#14171C; border:1px solid #262B33; border-radius:10px">
+            <button onClick="{{ setNow }}" style="flex:1; height:44px; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; background:{{ urgNow.bg }}; color:{{ urgNow.fg }}">Agora</button>
+            <button onClick="{{ setNight }}" style="flex:1; height:44px; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; background:{{ urgNight.bg }}; color:{{ urgNight.fg }}">Fila noturna</button>
+          </div>
+
+          <button onClick="{{ sendTask }}" style="width:100%; height:52px; margin-top:16px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer" style-hover="background:#4F46E5">{{ sendLabel }}</button>
+          <div style="margin-top:10px; text-align:center; font-size:12px; color:#6B7280">{{ composerCost }}</div>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;boardVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;grupos&quot;,&quot;fluxo&quot;],&quot;default&quot;:&quot;grupos&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Board&quot;},&quot;quotaState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;normal&quot;,&quot;atencao&quot;,&quot;critico&quot;],&quot;default&quot;:&quot;normal&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Cota&quot;}}">
+const SPIN = ["⣾","⣽","⣻","⢿","⡿","⣟","⣯","⣷"];
+const C = { att:"#F04438", run:"#F5A623", ok:"#22C55E", neutral:"#6B7280", info:"#3B82F6", accent:"#6366F1" };
+
+const STATUS = {
+  attention: { label:"Precisa de você", icon:"!", fg:C.att, bg:"#F0443819" },
+  running:   { label:"Rodando",         icon:"⣾", fg:C.run, bg:"#F5A62319" },
+  healthy:   { label:"Em dia",          icon:"✓", fg:C.ok,  bg:"#22C55E19" },
+  queued:    { label:"Na fila",         icon:"·", fg:C.neutral, bg:"#6B728019" },
+  idle:      { label:"Parado",          icon:"○", fg:C.neutral, bg:"#6B728019" }
+};
+
+const ICONS = {
+  board: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6" rx="1.5"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.5"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.5"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.5"/></svg>',
+  fila: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="11" y2="15"/></svg>',
+  cota: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="16" x2="4" y2="10"/><line x1="10" y1="16" x2="10" y2="4"/><line x1="16" y1="16" x2="16" y2="12"/></svg>',
+  config: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="2.6"/><circle cx="10" cy="10" r="7"/></svg>'
+};
+
+const RUNS = {
+  "cardapio-pwa": {
+    instruction: "Migrar os componentes de menu para TypeScript",
+    meta: "iniciado há 6 min · Sonnet · ~18k tokens",
+    status: "running",
+    steps: [
+      { label: "Li o repositório e mapeei 14 componentes de menu", dur: "42s", detail: "src/components/menu/  →  14 arquivos .jsx\nsrc/hooks/useMenu.js\nsem tsconfig.json no projeto" },
+      { label: "Criei tsconfig.json e ajustei o pipeline do Vite", dur: "1m 10s", detail: "+ tsconfig.json (strict: true)\n~ vite.config.js  → plugin de checagem de tipos" },
+      { label: "Convertendo MenuList e MenuItem", dur: "2m 04s", detail: "MenuList.tsx   ✓ tipos de props definidos\nMenuItem.tsx   ⋯ inferindo tipo de `variant`" },
+      { label: "Ajustar tipos de props compartilhadas", dur: "—", detail: "" },
+      { label: "Rodar testes", dur: "—", detail: "" },
+      { label: "Abrir PR", dur: "—", detail: "" }
+    ]
+  },
+  "bot-telegram": {
+    instruction: "Adicionar retry exponencial no envio de mensagens",
+    meta: "iniciado há 2 min · Haiku · ~6k tokens",
+    status: "running",
+    steps: [
+      { label: "Localizei o cliente de envio em sender.py", dur: "18s", detail: "sender.py:44  send_message()\nsem tratamento de 429" },
+      { label: "Escrevendo backoff exponencial com jitter", dur: "1m 32s", detail: "+ tenacity==8.2.3 em requirements.txt\n~ sender.py  → @retry(wait=wait_exponential(...))" },
+      { label: "Rodar testes", dur: "—", detail: "" },
+      { label: "Abrir PR", dur: "—", detail: "" }
+    ]
+  },
+  "api-financeiro": {
+    instruction: "Corrigir o cálculo de juros compostos no relatório mensal",
+    meta: "concluído há 2h · Sonnet · 31k tokens",
+    status: "done",
+    steps: [
+      { label: "Reproduzi o erro no relatório de março", dur: "1m 12s", detail: "esperado 1.043,27 · obtido 1.038,90\ndiferença acumulada por arredondamento a cada iteração" },
+      { label: "Corrigi o arredondamento para o fim do cálculo", dur: "3m 40s", detail: "~ src/services/interest.ts\n~ src/services/report.ts\n+ test/interest.spec.ts" },
+      { label: "Rodei os testes: 128 passaram, 0 falharam", dur: "1m 58s", detail: "vitest run  →  128 passed (2.4s)\ncobertura de interest.ts: 71% → 94%" },
+      { label: "Preparei o PR na branch fix/juros-compostos", dur: "22s", detail: "3 arquivos alterados · +64 −18" }
+    ]
+  },
+  "loja-mirim": {
+    instruction: "Atualizar o checkout para a nova API do Stripe",
+    meta: "falhou há 5h · Sonnet · 12k tokens",
+    status: "failed",
+    steps: [
+      { label: "Li a integração atual do checkout", dur: "38s", detail: "src/checkout/stripe.ts  → API 2022-11-15" },
+      { label: "Atualizei as chamadas para a versão 2024-06-20", dur: "2m 15s", detail: "~ src/checkout/stripe.ts\n~ src/checkout/webhook.ts" },
+      { label: "Não consegui rodar os testes", dur: "12s", detail: "Error: STRIPE_KEY is not defined\n  at loadConfig (test/setup.ts:8)" }
+    ]
+  }
+};
+
+class Component extends DCLogic {
+  state = {
+    screen: "board",
+    projectId: null,
+    runId: null,
+    variant: this.props.boardVariant || "grupos",
+    quotaState: this.props.quotaState || "normal",
+    healthyOpen: false,
+    composerOpen: false,
+    composerProject: "api-financeiro",
+    draft: "",
+    urgency: "night",
+    toast: null,
+    spinIdx: 0,
+    isDesktop: typeof window !== "undefined" && window.innerWidth >= 1024,
+    openStep: null,
+    openFiles: { 0: true },
+    demo: { empty: false, vpsError: false, offline: false },
+    weights: { "api-financeiro": 4, "cardapio-pwa": 3, "loja-mirim": 3, "bot-telegram": 2, "scraper-precos": 1 },
+    projects: [
+      { id:"api-financeiro", name:"api-financeiro", repo:"ju/api-financeiro", stack:"Node · Fastify", status:"attention",
+        summary:"Corrigi o cálculo de juros compostos e os 128 testes passaram. Abri um PR com 3 arquivos alterados esperando revisão.",
+        when:"há 2h", action:"Revisar diff", branch:"fix/juros-compostos", order:0 },
+      { id:"loja-mirim", name:"loja-mirim", repo:"ju/loja-mirim", stack:"Next.js · Prisma", status:"attention",
+        summary:"Parei a atualização do checkout: falta a variável STRIPE_KEY no ambiente de testes da VPS.",
+        when:"há 5h", action:"Ver erro", branch:"chore/stripe-2024", order:1 },
+      { id:"cardapio-pwa", name:"cardapio-pwa", repo:"ju/cardapio-pwa", stack:"React · Vite", status:"running",
+        summary:"Migrando os 14 componentes de menu para TypeScript. Já converti MenuList e MenuItem.",
+        when:"há 6 min", action:"Acompanhar", step:3, steps:6, order:2 },
+      { id:"bot-telegram", name:"bot-telegram", repo:"ju/bot-telegram", stack:"Python", status:"running",
+        summary:"Adicionando retry exponencial no envio de mensagens para lidar com o rate limit da API.",
+        when:"há 2 min", action:"Acompanhar", step:2, steps:4, order:3 },
+      { id:"site-institucional", name:"site-institucional", repo:"ju/site-institucional", stack:"Astro", status:"healthy",
+        summary:"Deploy concluído ontem à noite. Nenhuma pendência aberta.", when:"há 1 dia", action:"Abrir", order:4 },
+      { id:"gestor-projetos", name:"gestor-projetos", repo:"ju/gestor-projetos", stack:"React · Vite", status:"healthy",
+        summary:"Sem alterações desde o último merge. Testes verdes.", when:"há 3 dias", action:"Abrir", order:5 },
+      { id:"scraper-precos", name:"scraper-precos", repo:"ju/scraper-precos", stack:"Python", status:"idle",
+        summary:"Sem atividade há três semanas. A última tarefa terminou sem erros.", when:"há 21 dias", action:"Abrir", order:6 }
+    ],
+    queue: [
+      { id:1, project:"cardapio-pwa", text:"Gerar ícones e manifesto do PWA", urgency:"Noturna" },
+      { id:2, project:"api-financeiro", text:"Subir cobertura de testes do módulo de relatórios para 85%", urgency:"Noturna" },
+      { id:3, project:"site-institucional", text:"Trocar as imagens da home por WebP", urgency:"Noturna" },
+      { id:4, project:"bot-telegram", text:"Documentar os comandos no README", urgency:"Noturna" }
+    ]
+  };
+
+  componentDidMount() {
+    this.spinT = setInterval(() => this.setState(s => ({ spinIdx: (s.spinIdx + 1) % 8 })), 110);
+    this.onResize = () => {
+      const d = window.innerWidth >= 1024;
+      if (d !== this.state.isDesktop) this.setState({ isDesktop: d });
+    };
+    window.addEventListener("resize", this.onResize);
+  }
+  componentWillUnmount() {
+    clearInterval(this.spinT);
+    clearTimeout(this.toastT);
+    window.removeEventListener("resize", this.onResize);
+  }
+
+  flash(text) {
+    clearTimeout(this.toastT);
+    this.setState({ toast: text });
+    this.toastT = setTimeout(() => this.setState({ toast: null }), 3200);
+  }
+  go(screen, extra) { this.setState(Object.assign({ screen, composerOpen: false }, extra || {})); }
+  proj(id) { return this.state.projects.find(p => p.id === id); }
+
+  quotaData() {
+    const map = {
+      normal:   { pct:45, color:C.ok,  reset:"reseta terça 09:00", projection:"No ritmo atual, sobra cota até o reset.", warn:false },
+      atencao:  { pct:78, color:C.run, reset:"reseta terça 09:00", projection:"No ritmo atual, a cota acaba domingo à noite.", warn:true,
+                  warnText:"Ritmo acima do previsto — a fila noturna vai priorizar os projetos de peso 4 e 5." },
+      critico:  { pct:91, color:C.att, reset:"reseta terça 09:00", projection:"Restam 9% antes da reserva pessoal.", warn:true,
+                  warnText:"Fila pausada automaticamente até terça 09:00. Só tarefas marcadas como \"Agora\" vão rodar." }
+    };
+    const q = map[this.state.quotaState];
+    return { pct:q.pct, pctText:q.pct + "% usado", fill:q.pct + "%", color:q.color, reset:q.reset, warn:q.warn, warnText:q.warnText || "", projection:q.projection };
+  }
+
+  card(p) {
+    const st = STATUS[p.status];
+    return {
+      id: p.id, name: p.name, repo: p.repo, summary: p.summary, when: p.when, action: p.action,
+      badgeLabel: st.label, badgeFg: st.fg, badgeBg: st.bg, badgeIcon: p.status === "running" ? SPIN[this.state.spinIdx] : st.icon,
+      progress: p.steps ? Math.round((p.step / p.steps) * 100) + "%" : "0%",
+      stepText: p.steps ? "passo " + p.step + "/" + p.steps : "",
+      primary: () => this.openPrimary(p),
+      menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.go("projeto", { projectId: p.id }); }
+    };
+  }
+
+  openPrimary(p) {
+    if (p.status === "attention") {
+      if (p.id === "api-financeiro") return this.go("diff", { projectId: p.id, runId: p.id });
+      return this.go("run", { projectId: p.id, runId: p.id, openStep: 2 });
+    }
+    if (p.status === "running") return this.go("run", { projectId: p.id, runId: p.id, openStep: null });
+    return this.go("projeto", { projectId: p.id });
+  }
+
+  seg(active) {
+    return active ? { bg: "#20242C", fg: "#E8EAED" } : { bg: "transparent", fg: "#9BA3AF" };
+  }
+
+  runData() {
+    const id = this.state.runId || "cardapio-pwa";
+    const r = RUNS[id] || RUNS["cardapio-pwa"];
+    const p = this.proj(id) || {};
+    const activeIdx = r.status === "running" ? r.steps.findIndex(s => s.dur !== "—" && r.steps.indexOf(s) === r.steps.filter(x => x.dur !== "—").length - 1) : -1;
+    const doneCount = r.steps.filter(s => s.dur !== "—").length;
+    const badge = r.status === "running" ? { label:"Rodando", fg:C.run, bg:"#F5A62319", icon:SPIN[this.state.spinIdx] }
+      : r.status === "failed" ? { label:"Falhou", fg:C.att, bg:"#F0443819", icon:"✕" }
+      : { label:"Concluído", fg:C.ok, bg:"#22C55E19", icon:"✓" };
+    const steps = r.steps.map((s, i) => {
+      const pending = s.dur === "—";
+      const running = r.status === "running" && i === doneCount - 1;
+      const failed = r.status === "failed" && i === r.steps.length - 1;
+      const icon = pending ? "○" : failed ? "✕" : running ? SPIN[this.state.spinIdx] : "✓";
+      const color = pending ? "#4B5563" : failed ? C.att : running ? C.run : C.ok;
+      const open = (this.state.openStep === null ? running || failed : this.state.openStep === i) && !!s.detail;
+      return {
+        label: s.label, dur: pending ? "" : s.dur, icon, color,
+        textColor: pending ? "#6B7280" : "#E8EAED",
+        open, detail: s.detail,
+        toggle: () => this.setState({ openStep: this.state.openStep === i ? -1 : i })
+      };
+    });
+    return {
+      repo: p.repo || id, instruction: r.instruction, meta: r.meta, steps,
+      badgeLabel: badge.label, badgeFg: badge.fg, badgeBg: badge.bg, badgeIcon: badge.icon,
+      showDiffBtn: r.status === "done", failed: r.status === "failed",
+      filesText: "3 arquivos",
+      errorText: "Não consegui rodar os testes: a variável STRIPE_KEY não existe no ambiente da VPS. As alterações do checkout estão salvas na branch, sem PR aberto."
+    };
+  }
+
+  diffData() {
+    const mk = (n, text, kind) => ({
+      n: String(n), text,
+      bg: kind === "+" ? "rgba(34,197,94,0.10)" : kind === "-" ? "rgba(240,68,56,0.10)" : "transparent",
+      color: kind === "+" ? "#22C55E" : kind === "-" ? "#F04438" : "#9BA3AF"
+    });
+    const files = [
+      { path:"src/services/interest.ts", plus:"+41", minus:"−12", lines: [
+        mk(38, "  export function compound(", ""),
+        mk(39, "    principal: number,", ""),
+        mk(40, "    rate: number,", ""),
+        mk(41, "-   let total = principal;", "-"),
+        mk(42, "-   for (let i = 0; i < months; i++) {", "-"),
+        mk(43, "-     total = round2(total * (1 + rate));", "-"),
+        mk(44, "+   let total = principal;", "+"),
+        mk(45, "+   for (let i = 0; i < months; i++) {", "+"),
+        mk(46, "+     total = total * (1 + rate);", "+"),
+        mk(47, "+   }", "+"),
+        mk(48, "+   return round2(total);", "+"),
+        mk(49, "  }", "")
+      ]},
+      { path:"src/services/report.ts", plus:"+9", minus:"−6", lines: [
+        mk(112, "  const monthly = months.map(m =>", ""),
+        mk(113, "-   compound(m.principal, m.rate, m.n).toFixed(2)", "-"),
+        mk(114, "+   formatBRL(compound(m.principal, m.rate, m.n))", "+"),
+        mk(115, "  );", "")
+      ]},
+      { path:"test/interest.spec.ts", plus:"+14", minus:"−0", lines: [
+        mk(1, '+ import { compound } from "../src/services/interest";', "+"),
+        mk(2, '+ it("acumula sem arredondar a cada mês", () => {', "+"),
+        mk(3, "+   expect(compound(1000, 0.0042, 10)).toBe(1043.27);", "+"),
+        mk(4, "+ });", "+")
+      ]}
+    ];
+    return {
+      title: "api-financeiro · juros compostos", branch: "fix/juros-compostos → main",
+      added: "64", removed: "18", filesText: "3 arquivos",
+      files: files.map((f, i) => Object.assign({}, f, {
+        open: !!this.state.openFiles[i], caret: this.state.openFiles[i] ? "▾" : "▸",
+        toggle: () => this.setState({ openFiles: Object.assign({}, this.state.openFiles, { [i]: !this.state.openFiles[i] }) })
+      }))
+    };
+  }
+
+  setStatus(id, status, patch) {
+    this.setState(s => ({ projects: s.projects.map(p => p.id === id ? Object.assign({}, p, { status }, patch || {}) : p) }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const quota = this.quotaData();
+    const empty = s.demo.empty;
+    const list = empty ? [] : s.projects;
+    const byStatus = st => list.filter(p => p.status === st).map(p => this.card(p));
+    const nav = [
+      { id:"board", label:"Board", icon:ICONS.board },
+      { id:"fila", label:"Fila", icon:ICONS.fila },
+      { id:"cota", label:"Cota", icon:ICONS.cota },
+      { id:"config", label:"Config", icon:ICONS.config }
+    ].map(n => {
+      const active = s.screen === n.id || (n.id === "board" && (s.screen === "projeto" || s.screen === "run"));
+      return {
+        label: n.label, go: () => this.go(n.id),
+        icon: React.createElement("span", { dangerouslySetInnerHTML: { __html: n.icon }, style: { display:"flex" } }),
+        bg: active ? "#1B1F26" : "transparent",
+        fg: active ? "#E8EAED" : "#9BA3AF"
+      };
+    });
+    const attention = byStatus("attention"), running = byStatus("running");
+    const healthy = list.filter(p => p.status === "healthy" || p.status === "idle" || p.status === "queued").map(p => this.card(p));
+    const flow = list.slice().sort((a, b) => a.order - b.order).map(p => this.card(p));
+    const p = this.proj(s.projectId) || s.projects[0];
+    const pst = STATUS[p.status];
+    const totalWeight = Object.values(s.weights).reduce((a, b) => a + b, 0);
+    const dist = Object.keys(s.weights).map(id => {
+      const raw = [34, 24, 18, 15, 9][Object.keys(s.weights).indexOf(id)];
+      return {
+        name: id, pct: raw + "%", weight: s.weights[id],
+        inc: () => this.setState(st => ({ weights: Object.assign({}, st.weights, { [id]: Math.min(5, st.weights[id] + 1) }) })),
+        dec: () => this.setState(st => ({ weights: Object.assign({}, st.weights, { [id]: Math.max(1, st.weights[id] - 1) }) }))
+      };
+    });
+    const weekVals = [62, 71, 55, 88, 74, quota.pct];
+    const isMobile = !s.isDesktop;
+
+    return {
+      showSidebar: s.isDesktop && s.screen !== "diff",
+      showTabBar: isMobile && s.screen !== "diff",
+      showChrome: s.screen !== "diff",
+      scrollPad: s.screen === "diff" ? "0px" : (isMobile ? "28px" : "48px"),
+      navItems: nav,
+      tabsLeft: nav.slice(0, 2), tabsRight: nav.slice(2),
+      sideProjects: list.map(x => ({ name: x.name, dot: STATUS[x.status].fg, open: () => this.go("projeto", { projectId: x.id }) })),
+      quota,
+      spin: SPIN[s.spinIdx],
+      demo: s.demo,
+      isEmpty: empty,
+      isBoard: s.screen === "board", isProjeto: s.screen === "projeto", isRun: s.screen === "run",
+      isDiff: s.screen === "diff", isFila: s.screen === "fila", isCota: s.screen === "cota", isConfig: s.screen === "config",
+      boardSubtitle: empty ? "Nada por aqui ainda" : attention.length + " precisam de você · " + running.length + " rodando",
+      gridCols: s.isDesktop ? "repeat(2, minmax(0,1fr))" : "1fr",
+      compactCols: s.isDesktop ? "repeat(3, minmax(0,1fr))" : "1fr",
+      variantA: this.seg(s.variant === "grupos"), variantB: this.seg(s.variant === "fluxo"),
+      setGrupos: () => this.setState({ variant: "grupos" }), setFluxo: () => this.setState({ variant: "fluxo" }),
+      showGrupos: s.variant === "grupos" && !empty, showFluxo: s.variant === "fluxo" && !empty,
+      attentionCards: attention, runningCards: running, healthyCards: healthy, flowCards: flow,
+      counts: { attention: attention.length, running: running.length, healthy: healthy.length },
+      healthyOpen: s.healthyOpen, healthyToggleLabel: s.healthyOpen ? "esconder" : "mostrar",
+      toggleHealthy: () => this.setState({ healthyOpen: !s.healthyOpen }),
+      goBoard: () => this.go("board"), goCota: () => this.go("cota"), goConfig: () => this.go("config"),
+      goDiff: () => this.go("diff"), back: () => this.go(s.screen === "diff" ? "board" : "projeto", { projectId: s.projectId }),
+      proj: {
+        name: p.name, repo: p.repo, stack: p.stack,
+        badgeLabel: pst.label, badgeFg: pst.fg, badgeBg: pst.bg,
+        badgeIcon: p.status === "running" ? SPIN[s.spinIdx] : pst.icon,
+        metrics: [
+          { label:"Branch", value: p.branch || "main", color:"#E8EAED" },
+          { label:"Ahead / behind", value:"3 ↑ · 0 ↓", color:"#E8EAED" },
+          { label:"PRs abertos", value: p.status === "attention" ? "1" : "0", color:"#E8EAED" },
+          { label:"Último commit", value:"há 2h", color:"#9BA3AF" },
+          { label:"Testes", value:"128 ✓", color:C.ok },
+          { label:"Lint", value: p.status === "attention" ? "2 avisos" : "limpo", color: p.status === "attention" ? C.run : C.ok }
+        ],
+        runs: [
+          { title: (RUNS[p.id] || RUNS["api-financeiro"]).instruction, meta: (RUNS[p.id] || RUNS["api-financeiro"]).meta, icon: p.status === "running" ? SPIN[s.spinIdx] : "✓", color: p.status === "running" ? C.run : C.ok, open: () => this.go("run", { runId: p.id, projectId: p.id, openStep: null }) },
+          { title:"Atualizar dependências menores", meta:"concluído há 2 dias · Haiku · 4k tokens", icon:"✓", color:C.ok, open: () => this.go("run", { runId: p.id, projectId: p.id }) },
+          { title:"Escrever testes para o módulo de export", meta:"concluído há 5 dias · Sonnet · 22k tokens", icon:"✓", color:C.ok, open: () => this.go("run", { runId: p.id, projectId: p.id }) },
+          { title:"Migrar CI para GitHub Actions", meta:"falhou há 8 dias · timeout no runner", icon:"✕", color:C.att, open: () => this.go("run", { runId: p.id, projectId: p.id }) }
+        ]
+      },
+      run: this.runData(),
+      retryRun: () => { this.flash("Tarefa reenviada para a fila"); this.go("board"); },
+      diff: this.diffData(),
+      approve: () => { this.setStatus("api-financeiro", "healthy", { summary:"PR #42 aberto e mergeado. Testes verdes.", when:"agora", action:"Abrir" }); this.flash("PR #42 aberto no GitHub"); this.go("board"); },
+      requestChanges: () => { this.flash("Pedido de ajuste enviado ao agente"); this.setStatus("api-financeiro", "running", { step:1, steps:4, summary:"Refazendo o cálculo conforme o seu pedido de ajuste." }); this.go("board"); },
+      discard: () => { this.flash("Alterações descartadas"); this.setStatus("api-financeiro", "idle", { summary:"Alterações descartadas. Branch removida.", when:"agora", action:"Abrir" }); this.go("board"); },
+      queue: s.queue.map((q, i) => ({
+        pos: String(i + 1).padStart(2, "0"), project: q.project, text: q.text, urgency: q.urgency,
+        urgColor: q.urgency === "Agora" ? C.run : C.neutral,
+        cancel: () => { this.setState(st => ({ queue: st.queue.filter(x => x.id !== q.id) })); this.flash("Tarefa cancelada"); }
+      })),
+      queueEmpty: s.queue.length === 0,
+      queueSubtitle: s.queue.length + " tarefas · a janela noturna abre às 02:00",
+      quotaModes: [
+        { label:"Normal", set: () => this.setState({ quotaState:"normal" }), bg: this.seg(s.quotaState==="normal").bg, fg: this.seg(s.quotaState==="normal").fg },
+        { label:"Atenção", set: () => this.setState({ quotaState:"atencao" }), bg: this.seg(s.quotaState==="atencao").bg, fg: this.seg(s.quotaState==="atencao").fg },
+        { label:"Crítico", set: () => this.setState({ quotaState:"critico" }), bg: this.seg(s.quotaState==="critico").bg, fg: this.seg(s.quotaState==="critico").fg }
+      ],
+      distribution: dist,
+      weeks: weekVals.map((v, i) => ({ h: v + "%", label: i === 5 ? "atual" : "s" + (i + 1), color: i === 5 ? quota.color : "#262B33" })),
+      configProjects: s.projects.map(x => ({ name: x.name, model: x.stack.indexOf("Python") >= 0 ? "Haiku" : "Sonnet", weight: s.weights[x.id] || 2, open: () => this.go("projeto", { projectId: x.id }) })),
+      integrations: [
+        { name:"GitHub App", status:"conectado", color:C.ok, icon:"✓" },
+        { name:"Bot do Telegram", status:"conectado", color:C.ok, icon:"✓" },
+        { name:"VPS (Tailscale)", status: s.demo.vpsError ? "sem conexão" : "online", color: s.demo.vpsError ? C.att : C.ok, icon: s.demo.vpsError ? "✕" : "✓" }
+      ],
+      demoToggles: [
+        { key:"empty", label:"Nenhum projeto cadastrado", hint:"Estado vazio do Board" },
+        { key:"vpsError", label:"Erro de conexão com a VPS", hint:"Banner sem bloquear a leitura" },
+        { key:"offline", label:"Modo offline", hint:"Marca d'água com a hora dos dados" }
+      ].map(t => ({
+        label: t.label, hint: t.hint,
+        trackBg: s.demo[t.key] ? C.accent : "#262B33",
+        knobLeft: s.demo[t.key] ? "21px" : "3px",
+        toggle: () => this.setState(st => ({ demo: Object.assign({}, st.demo, { [t.key]: !st.demo[t.key] }) }))
+      })),
+      composerOpen: s.composerOpen,
+      openComposer: () => this.setState({ composerOpen: true, composerProject: s.projectId || s.composerProject }),
+      closeComposer: () => this.setState({ composerOpen: false }),
+      composerProjects: s.projects.map(x => ({
+        name: x.name,
+        bg: s.composerProject === x.id ? "#6366F119" : "#14171C",
+        fg: s.composerProject === x.id ? "#E8EAED" : "#9BA3AF",
+        border: s.composerProject === x.id ? C.accent : "#262B33",
+        pick: () => this.setState({ composerProject: x.id })
+      })),
+      draft: s.draft,
+      setDraft: (e) => this.setState({ draft: e.target.value }),
+      shortcuts: [
+        "Atualizar dependências", "Subir cobertura de testes", "Revisar acessibilidade", "Corrigir avisos de lint"
+      ].map(l => ({ label: l, pick: () => this.setState({ draft: l + " em " + s.composerProject }) })),
+      urgNow: this.seg(s.urgency === "now"), urgNight: this.seg(s.urgency === "night"),
+      setNow: () => this.setState({ urgency: "now" }), setNight: () => this.setState({ urgency: "night" }),
+      sendLabel: s.urgency === "now" ? "Rodar agora" : "Adicionar à fila noturna",
+      composerCost: "Estimativa: ~8k tokens · " + (100 - quota.pct) + "% de cota livre",
+      sendTask: () => {
+        const text = s.draft.trim() || "Tarefa sem descrição";
+        const id = Date.now();
+        this.setState(st => ({ queue: st.queue.concat([{ id, project: st.composerProject, text, urgency: st.urgency === "now" ? "Agora" : "Noturna" }]), draft: "", composerOpen: false }));
+        if (s.urgency === "now") this.setStatus(s.composerProject, "running", { step:1, steps:4, summary: "Comecei agora: " + text.toLowerCase() + ".", when:"agora", action:"Acompanhar" });
+        else this.setStatus(s.composerProject, "queued", { summary: "Na fila noturna: " + text.toLowerCase() + ".", when:"02:00", action:"Ver fila" });
+        this.flash(s.urgency === "now" ? "Tarefa iniciada" : "Tarefa adicionada à fila");
+        this.go("board");
+      },
+      toast: { show: !!s.toast, text: s.toast || "" }
+    };
+  }
+}
+</script>
+</body>
+</html>
