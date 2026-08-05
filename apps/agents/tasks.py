@@ -110,6 +110,13 @@ def _run_phase(task_run, phase, worktree_path, context) -> bool:
     _publish(task_run.id, step.id)
     context.update(result.context_updates)
 
+    if result.ok and phase in (TaskRunStep.Phase.EXECUTE, TaskRunStep.Phase.VERIFY):
+        # O agente só escreve nos arquivos (Edit/Write) — não commita. Sem
+        # isso, diff_stat()/push_branch() não veriam nada (comparam
+        # commits, não o working tree).
+        commit_message = (result.detail[:72] or f"{phase}: alterações do agente").splitlines()[0]
+        workspace.commit_worktree_changes(task_run, commit_message)
+
     _update_verify_counter(task_run, phase, ok=result.ok)
     if not result.ok:
         context["last_error"] = result.detail

@@ -91,6 +91,31 @@ def create_worktree(task_run, base_branch: str) -> Path:
     return worktree_path
 
 
+def commit_worktree_changes(task_run, message: str) -> bool:
+    """Commita quaisquer mudanças pendentes no worktree.
+
+    O agente (via Edit/Write) só escreve nos arquivos — não commita. Sem
+    isso, `diff_stat()`/`push_branch()` não veriam nada (comparam commits,
+    não o working tree), e um approve produziria um PR vazio. Retorna
+    True se um commit foi criado, False se não havia nada pendente.
+    """
+    worktree_path = _worktree_path(task_run)
+    status = _run(["git", "status", "--porcelain"], cwd=worktree_path).stdout
+    if not status.strip():
+        return False
+    _run(["git", "add", "-A"], cwd=worktree_path)
+    _run(
+        [
+            "git",
+            "-c", "user.email=agent@gestor-de-projetos.local",
+            "-c", "user.name=Gestor de Projetos Agent",
+            "commit", "-m", message,
+        ],
+        cwd=worktree_path,
+    )
+    return True
+
+
 def push_branch(task_run) -> None:
     """Push do branch do worktree para origin. Só deve ser chamado pelo
     endpoint /approve/ — nunca automaticamente."""

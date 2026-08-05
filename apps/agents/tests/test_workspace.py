@@ -72,6 +72,34 @@ class WorkspaceTests(TestCase):
         )
         self.assertEqual(result.stdout.strip(), f"agent/task-{task_run.id}")
 
+    def test_commit_worktree_changes_commits_uncommitted_edits(self):
+        """Regressão: o agente (Edit/Write) só escreve nos arquivos, nunca
+        commita — sem commit_worktree_changes, diff_stat()/push_branch()
+        não veem a mudança (comparam commits, não o working tree), e um
+        approve produziria um PR vazio. Confirmado por teste real contra a
+        API antes deste fix existir."""
+        task_run = TaskRun.objects.create(project=self.project, instruction="teste", base_branch="main")
+        worktree = workspace.create_worktree(task_run, base_branch="main")
+
+        (worktree / "README.md").write_text("mudança sem commit\n")
+        committed = workspace.commit_worktree_changes(task_run, "Execute: teste")
+        self.assertTrue(committed)
+
+        status = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=worktree, capture_output=True, text=True, check=True
+        )
+        self.assertEqual(status.stdout.strip(), "")  # working tree limpo após o commit
+
+        files = workspace.diff_stat(task_run)
+        self.assertEqual([f["path"] for f in files], ["README.md"])
+
+    def test_commit_worktree_changes_noop_when_nothing_pending(self):
+        task_run = TaskRun.objects.create(project=self.project, instruction="teste", base_branch="main")
+        workspace.create_worktree(task_run, base_branch="main")
+
+        committed = workspace.commit_worktree_changes(task_run, "não deveria commitar nada")
+        self.assertFalse(committed)
+
     def test_diff_stat_reflects_change(self):
         task_run = TaskRun.objects.create(
             project=self.project, instruction="teste", base_branch="main"
