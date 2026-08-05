@@ -102,3 +102,30 @@ class RunTaskRunTests(TestCase):
         self.assertEqual(task_run.state, TaskRun.State.FAILED)
         failed_steps = TaskRunStep.objects.filter(task_run=task_run, status=TaskRunStep.Status.FAILED)
         self.assertTrue(failed_steps.exists())
+
+
+class DispatchNightlyQueueTests(TestCase):
+    def setUp(self):
+        self.project = Project.objects.create(name="teste")
+
+    @patch("apps.agents.tasks.run_task_run.delay")
+    @patch("apps.budget.tracking.budget_state", return_value={"should_pause_nightly": True})
+    def test_paused_when_budget_over_threshold(self, mock_state, mock_delay):
+        from apps.agents.tasks import dispatch_nightly_queue
+
+        TaskRun.objects.create(
+            project=self.project, instruction="x", urgency=TaskRun.Urgency.NIGHTLY, state=TaskRun.State.QUEUED
+        )
+        dispatch_nightly_queue()
+        mock_delay.assert_not_called()
+
+    @patch("apps.agents.tasks.run_task_run.delay")
+    @patch("apps.budget.tracking.budget_state", return_value={"should_pause_nightly": False})
+    def test_dispatches_when_budget_ok(self, mock_state, mock_delay):
+        from apps.agents.tasks import dispatch_nightly_queue
+
+        task_run = TaskRun.objects.create(
+            project=self.project, instruction="x", urgency=TaskRun.Urgency.NIGHTLY, state=TaskRun.State.QUEUED
+        )
+        dispatch_nightly_queue()
+        mock_delay.assert_called_once_with(task_run.id)

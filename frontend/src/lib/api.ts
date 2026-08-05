@@ -78,6 +78,36 @@ export interface DiffFile {
   lines: DiffLine[]
 }
 
+export type BudgetColor = 'normal' | 'atencao' | 'critico'
+
+export interface BudgetDistributionEntry {
+  project_id: number
+  project_name: string
+  used_usd: number
+  priority_weight: number
+}
+
+export interface BudgetWeek {
+  week_start: string
+  used_usd: number
+}
+
+export interface BudgetState {
+  quota_total_usd: number
+  used_usd: number
+  pct: number
+  color: BudgetColor
+  warn: boolean
+  warn_text: string
+  should_pause_nightly: boolean
+  personal_reserve_pct: number
+  pause_threshold_pct: number
+  window_start: string
+  reset_at: string
+  distribution: BudgetDistributionEntry[]
+  weeks: BudgetWeek[]
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
@@ -101,6 +131,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  updateProject: (id: number | string, data: Partial<Project>) =>
+    request<Project>(`/api/projects/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   deleteProject: (id: number) =>
     request<void>(`/api/projects/${id}/`, { method: 'DELETE' }),
@@ -140,4 +173,12 @@ export const api = {
 
   retryTaskRun: (id: number | string) =>
     request<TaskRun>(`/api/task-runs/${id}/retry/`, { method: 'POST' }),
+
+  getBudget: () => request<BudgetState>('/api/budget/'),
+
+  updateBudgetSettings: (data: {
+    quota_total_usd?: number
+    personal_reserve_pct?: number
+    pause_threshold_pct?: number
+  }) => request<BudgetState>('/api/budget/', { method: 'POST', body: JSON.stringify(data) }),
 }

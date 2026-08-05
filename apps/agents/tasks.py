@@ -104,8 +104,9 @@ def _run_phase(task_run, phase, worktree_path, context) -> bool:
 
     step.status = TaskRunStep.Status.DONE if result.ok else TaskRunStep.Status.FAILED
     step.detail = result.detail[:4000]
+    step.cost_usd = result.cost_usd
     step.finished_at = timezone.now()
-    step.save(update_fields=["status", "detail", "finished_at"])
+    step.save(update_fields=["status", "detail", "cost_usd", "finished_at"])
     _publish(task_run.id, step.id)
     context.update(result.context_updates)
 
@@ -156,7 +157,17 @@ def _publish(task_run_id, step_id) -> None:
 @shared_task
 def dispatch_nightly_queue():
     """Enfileira todos os TaskRuns QUEUED+NIGHTLY (agendado via celery-beat
-    às 02:00 — ver management command bootstrap_agents_beat_schedule)."""
+    às 02:00 — ver management command bootstrap_agents_beat_schedule).
+
+    Pausa por inteiro (RF-12) se o orçamento semanal estourou o limiar —
+    tarefas urgency=now nunca são afetadas por isso, só a fila noturna.
+    """
+    from apps.budget.tracking import budget_state
+
+    if budget_state()["should_pause_nightly"]:
+        logger.info("dispatch_nightly_queue: pausado — orçamento semanal no limiar")
+        return
+
     runs = TaskRun.objects.filter(state=TaskRun.State.QUEUED, urgency=TaskRun.Urgency.NIGHTLY)
     for task_run_id in runs.values_list("id", flat=True):
         run_task_run.delay(task_run_id)

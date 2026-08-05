@@ -1,0 +1,250 @@
+.cota {
+  padding: 20px 16px 32px;
+  max-width: 640px;
+}
+
+.cota h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.cota-loading {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--text2);
+}
+.cota-error {
+  color: var(--att);
+}
+
+.cota-subtitle {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text2);
+}
+
+.cota-card {
+  margin-top: 20px;
+  padding: 18px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.cota-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cota-pct {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.cota-reset {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.cota-bar {
+  position: relative;
+  height: 8px;
+  margin-top: 14px;
+  border-radius: 99px;
+  background: var(--hover);
+  overflow: hidden;
+}
+
+.cota-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 200ms ease-out;
+}
+.cota-bar-normal {
+  background: var(--ok);
+}
+.cota-bar-atencao {
+  background: var(--run);
+}
+.cota-bar-critico {
+  background: var(--att);
+}
+
+.cota-bar-reserve {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  border-left: 1px dashed var(--border-strong);
+  background: repeating-linear-gradient(135deg, rgba(128, 128, 128, 0.26) 0 2px, transparent 2px 5px);
+}
+
+.cota-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.cota-warn {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text2);
+}
+.cota-warn .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  flex: none;
+  margin-top: 6px;
+}
+.cota-warn-atencao .dot {
+  background: var(--run);
+}
+.cota-warn-critico .dot {
+  background: var(--att);
+}
+
+.cota-section-title {
+  margin-top: 28px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cota-settings {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.cota-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text3);
+}
+.cota-settings input {
+  width: 140px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.cota-empty {
+  margin-top: 14px;
+  color: var(--text2);
+  font-size: 14px;
+}
+
+.cota-distribution {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cota-dist-row {
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.cota-dist-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.cota-dist-value {
+  color: var(--text3);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.cota-dist-weight {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+}
+.cota-dist-weight span:first-child {
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.cota-dist-weight-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cota-dist-weight-controls button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text2);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cota-dist-weight-controls button:hover {
+  background: var(--hover);
+}
+.cota-dist-weight-controls span {
+  min-width: 16px;
+  text-align: center;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.cota-weeks {
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 100px;
+}
+
+.cota-week {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.cota-week-bar {
+  width: 100%;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--border);
+}
+
+.cota-week-label {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}

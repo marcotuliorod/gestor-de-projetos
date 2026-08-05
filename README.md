@@ -12,7 +12,10 @@ Composer → orquestração Discuss→Plan→Execute→Verify (Celery, isolada p
 `git worktree`) → Diff review → Aprovar/Pedir ajustes/Descartar, com chamada
 real ao Claude Agent SDK (`apps/agents/agent_client.py`) já testada
 end-to-end contra a API de verdade — ver "Execução de agentes" abaixo para
-os requisitos de segurança do container (não-root + bubblewrap/socat).
+os requisitos de segurança do container (não-root + bubblewrap/socat) —
+mais o **Token Budget Scheduler** (RF-11..13): orçamento semanal em USD
+(a partir do custo real de cada `TaskRunStep`, via `ResultMessage.total_cost_usd`),
+com pausa automática da fila noturna ao estourar o limiar.
 
 ## Stack
 
@@ -39,6 +42,12 @@ docker compose run --rm web python manage.py createsuperuser
 docker compose run --rm web python manage.py bootstrap_beat_schedule          # coleta periódica a cada 20min
 docker compose run --rm web python manage.py bootstrap_agents_beat_schedule   # fila noturna de agentes às 02:00
 ```
+
+**Orçamento semanal:** configure em `POST /api/budget/` (ou pela tela Cota
+no frontend) `quota_total_usd`/`personal_reserve_pct`/`pause_threshold_pct` —
+por padrão a cota é `$0` (sem teto, nada pausa). O uso é sempre computado
+sob demanda a partir de `TaskRunStep.cost_usd` — não há job de "virar a
+semana" nem contador que possa dessincronizar.
 
 **Execução de agentes:** `AGENTS_FAKE_MODE=True` (padrão) faz o agente
 escrever uma mudança determinística e trivial no worktree em vez de chamar
@@ -89,6 +98,7 @@ Serviços:
 | `localhost:8000/api/task-runs/<id>/approve/` | Único endpoint que faz push + abre PR |
 | `localhost:8000/api/task-runs/<id>/{request-changes,discard,retry}/` | Ciclo de vida da revisão |
 | `localhost:8000/api/task-runs/<id>/stream/` | SSE (best-effort) dos passos da execução |
+| `localhost:8000/api/budget/` | GET: estado do orçamento · POST: atualiza settings |
 | `localhost:5555/` | Flower (Celery) |
 
 ## Estrutura
@@ -102,11 +112,11 @@ apps/status/       StatusSnapshot + Board + histórico + coletor real via
 apps/agents/       TaskRun/TaskRunStep, workspace (worktree git), roteamento
                      de modelo, orquestração Discuss→Plan→Execute→Verify e
                      API de execução de agentes (RF-07..10, RF-17..20)
-apps/budget/       BudgetWindow (esqueleto, RF-11..13)
+apps/budget/       BudgetSettings (singleton) + tracking.py (agregação de
+                     custo por janela semanal) + API (RF-11..13)
 design/             .dc.html exportados do Claude Design (fonte de verdade de UI)
 frontend/           React + Vite + TS — Board, Config, Projeto, Composer, Run,
-                     Diff e Fila reais; Cota como placeholder honesto
-                     (Token Budget Scheduler ainda não existe)
+                     Diff, Fila e Cota reais
 ```
 
 ## Testar a integração real do Agent SDK (sem precisar de GitHub App)
@@ -161,9 +171,10 @@ print(urllib.request.urlopen(req).status)
 
 ## Fora desta fase
 
-Headroom proxy · Caveman · Token Budget Scheduler funcional (enforcement de
-cota/pausa) · isolamento por container Docker por tarefa (usamos `git
-worktree` num volume compartilhado) · paralelismo de execução (RF-21) ·
+Headroom proxy · Caveman · notificação Telegram do aviso de pausa (RF-14) ·
+detecção automática de plano/limite via conta Anthropic (não há API
+confiável para isso) · isolamento por container Docker por tarefa (usamos
+`git worktree` num volume compartilhado) · paralelismo de execução (RF-21) ·
 frontend/PWA · deploy VPS/Tailscale/Caddy.
 
 **Nota de arquitetura:** o PRD original previa disparar o GSD Core

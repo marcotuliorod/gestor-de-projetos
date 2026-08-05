@@ -37,6 +37,9 @@ class PhaseResult:
     ok: bool
     detail: str
     context_updates: dict = field(default_factory=dict)
+    # Custo real da chamada (USD) — None em modo fake. Alimenta o Token
+    # Budget Scheduler (apps.budget) via TaskRunStep.cost_usd.
+    cost_usd: float | None = None
 
 
 def run_phase(
@@ -70,6 +73,7 @@ def _run_phase_fake(phase, model, project, instruction, worktree_path, context) 
             ok=True,
             detail=f"[fake] Escrevi uma anotação em AGENT_NOTES.md descrevendo a instrução (modelo: {model}).",
             context_updates={"execute_summary": "Anotação adicionada em AGENT_NOTES.md."},
+            cost_usd=0,
         )
 
     detail_by_phase = {
@@ -82,6 +86,7 @@ def _run_phase_fake(phase, model, project, instruction, worktree_path, context) 
         ok=True,
         detail=detail_by_phase.get(phase, "[fake] ok"),
         context_updates={"summary": "Alterações de teste (modo fake) prontas para revisão."},
+        cost_usd=0,
     )
 
 
@@ -172,6 +177,7 @@ def _run_phase_real(phase, model, project, instruction, worktree_path, context) 
         ok=ok,
         detail=detail[:4000],
         context_updates={f"{phase}_summary": detail[:280]},
+        cost_usd=result.total_cost_usd,
     )
 
 

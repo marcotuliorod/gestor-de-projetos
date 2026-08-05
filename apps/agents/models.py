@@ -92,6 +92,9 @@ class TaskRunStep(models.Model):
         max_length=10, choices=Status.choices, default=Status.PENDING
     )
     model_used = models.CharField(max_length=20, blank=True)
+    # Custo real da chamada (ResultMessage.total_cost_usd) — None em modo
+    # fake. Base do Token Budget Scheduler (RF-11..13, apps.budget).
+    cost_usd = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
     # Resumo textual curto do que a fase fez/encontrou — nunca o diff.
     detail = models.TextField(blank=True)
     started_at = models.DateTimeField(null=True, blank=True)

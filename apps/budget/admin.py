@@ -1,8 +1,15 @@
 from django.contrib import admin
 
-from .models import BudgetWindow
+from .models import BudgetSettings
 
 
-@admin.register(BudgetWindow)
-class BudgetWindowAdmin(admin.ModelAdmin):
-    list_display = ("week_start", "quota_total", "used", "personal_reserve", "pause_threshold_pct")
+@admin.register(BudgetSettings)
+class BudgetSettingsAdmin(admin.ModelAdmin):
+    list_display = ("quota_total_usd", "personal_reserve_pct", "pause_threshold_pct", "reset_weekday", "reset_hour")
+
+    def has_add_permission(self, request):
+        # Singleton — só existe a linha pk=1, criada sob demanda por load().
+        return not BudgetSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
