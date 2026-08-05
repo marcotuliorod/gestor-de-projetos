@@ -1,5 +1,7 @@
 from django.db import models
 
+from .github_utils import parse_github_repo_url
+
 
 class Project(models.Model):
     """Um projeto de software gerenciado (RF-01/02/03).
@@ -20,6 +22,10 @@ class Project(models.Model):
 
     # Origem no GitHub. repo_url pode vir de seleção via App ou URL manual.
     repo_url = models.URLField(blank=True)
+    # owner/repo derivados de repo_url em save() — usados pelo coletor de
+    # status (GitHub API) para não reparsear a URL a cada chamada.
+    repo_owner = models.CharField(max_length=200, blank=True)
+    repo_name = models.CharField(max_length=200, blank=True)
 
     # Stack detectada/declarada e comandos sugeridos.
     stack = models.CharField(max_length=200, blank=True)
@@ -42,6 +48,13 @@ class Project(models.Model):
 
     class Meta:
         ordering = ["-priority_weight", "name"]
+
+    def save(self, *args, **kwargs):
+        if self.repo_url:
+            parsed = parse_github_repo_url(self.repo_url)
+            if parsed:
+                self.repo_owner, self.repo_name = parsed
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

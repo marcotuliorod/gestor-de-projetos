@@ -8,3 +8,4 @@ django-celery-beat==2.7.*
 django-celery-results==2.5.*
 flower==2.0.*
 uvicorn[standard]==0.34.*
+PyGithub==2.5.*

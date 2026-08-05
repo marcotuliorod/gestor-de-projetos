@@ -106,3 +106,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
 }
+
+# --- GitHub App (coletor de status real) --------------------------------
+GITHUB_APP_ID = env("GITHUB_APP_ID", default="")
+GITHUB_APP_PRIVATE_KEY_B64 = env("GITHUB_APP_PRIVATE_KEY_B64", default="")
+GITHUB_APP_INSTALLATION_ID = env("GITHUB_APP_INSTALLATION_ID", default="")
+GITHUB_WEBHOOK_SECRET = env("GITHUB_WEBHOOK_SECRET", default="")
