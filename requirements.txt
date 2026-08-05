@@ -9,3 +9,4 @@ django-celery-results==2.5.*
 flower==2.0.*
 uvicorn[standard]==0.34.*
 PyGithub==2.5.*
+claude-agent-sdk==0.2.*

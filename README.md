@@ -9,9 +9,10 @@ completo.
 (`design/Gestor de Projetos.dc.html`) + coletor de status real via GitHub App
 (webhook + polling) + **execução de agentes** (RF-07..10, RF-17..20):
 Composer → orquestração Discuss→Plan→Execute→Verify (Celery, isolada por
-`git worktree`) → Diff review → Aprovar/Pedir ajustes/Descartar. A chamada
-real ao Claude Agent SDK ainda não foi implementada (ver "AGENTS_FAKE_MODE"
-abaixo) — todo o resto do fluxo já roda de ponta a ponta.
+`git worktree`) → Diff review → Aprovar/Pedir ajustes/Descartar, com chamada
+real ao Claude Agent SDK (`apps/agents/agent_client.py`) já testada
+end-to-end contra a API de verdade — ver "Execução de agentes" abaixo para
+os requisitos de segurança do container (não-root + bubblewrap/socat).
 
 ## Stack
 
@@ -41,13 +42,24 @@ docker compose run --rm web python manage.py bootstrap_agents_beat_schedule   # 
 
 **Execução de agentes:** `AGENTS_FAKE_MODE=True` (padrão) faz o agente
 escrever uma mudança determinística e trivial no worktree em vez de chamar
-uma API real — todo o resto (worktree, branch, diff, aprovação, PR) já é
-real. Antes de rodar com `AGENTS_FAKE_MODE=False`, é preciso confirmar o
-pacote/assinatura reais do Claude Agent SDK Python (spike pendente, ver
-`apps/agents/agent_client.py`) e preencher `ANTHROPIC_API_KEY`. Também exige
-credenciais reais de GitHub App (ver acima) — sem elas, a preparação do
-worktree falha de forma controlada (`TaskRun` vai para `failed` com um erro
-claro, o Board é atualizado imediatamente).
+uma API real. Para rodar com `AGENTS_FAKE_MODE=False` (integração real, já
+implementada e testada em `apps/agents/agent_client.py` via o pacote
+`claude-agent-sdk`), preencha `ANTHROPIC_API_KEY` no `.env`. Também exige
+credenciais reais de GitHub App para o worktree (ver acima) — sem elas, a
+preparação falha de forma controlada (`TaskRun` vai para `failed` com um
+erro claro, o Board é atualizado imediatamente).
+
+**Requisitos de segurança do container** (descobertos testando contra a API
+real, não teóricos — ver `Dockerfile`): o SDK roda sem prompts de aprovação
+(`permission_mode="bypassPermissions"`), o que a própria CLI recusa fazer
+como root — por isso a imagem roda como usuário não-root (`appuser`). Além
+disso, `sandbox={"enabled": True}` (que isola o que os comandos Bash do
+agente conseguem tocar, restringindo-o ao worktree) **requer os pacotes
+`bubblewrap` e `socat` instalados na imagem** — sem eles o SDK avisa e roda
+sem nenhum isolamento, e um teste real confirmou que o agente consegue ler
+qualquer arquivo do container (`.env` incluso) nesse caso. Ambos já estão no
+`Dockerfile`; se você alterar a imagem base, mantenha os três (usuário
+não-root + bubblewrap + socat) ou a execução de agentes fica insegura.
 
 Para o webhook do GitHub apontar para o backend local, use `smee.io` ou
 `ngrok` fazendo forward para `http://localhost:8000/api/webhooks/github/`
@@ -97,6 +109,28 @@ frontend/           React + Vite + TS — Board, Config, Projeto, Composer, Run,
                      (Token Budget Scheduler ainda não existe)
 ```
 
+## Testar a integração real do Agent SDK (sem precisar de GitHub App)
+
+Chama `agent_client.run_phase()` direto contra um diretório qualquer (não
+precisa ser um worktree de verdade nem de credenciais do GitHub) — útil para
+validar a chave `ANTHROPIC_API_KEY` e a configuração de sandbox isoladamente:
+
+```bash
+docker compose run --rm web python manage.py shell -c "
+import tempfile, pathlib
+from django.conf import settings
+settings.AGENTS_FAKE_MODE = False
+from apps.agents.agent_client import run_phase
+from apps.agents.models import TaskRunStep
+from apps.projects.models import Project
+tmp = pathlib.Path(tempfile.mkdtemp())
+r = run_phase(phase=TaskRunStep.Phase.EXECUTE, model='haiku', project=Project(name='t'),
+    instruction='Crie hello.txt com o conteudo: oi', worktree_path=str(tmp), context={})
+print(r.ok, r.detail)
+print((tmp / 'hello.txt').read_text())
+"
+```
+
 ## Testar o coletor de status
 
 ```bash
@@ -127,7 +161,6 @@ print(urllib.request.urlopen(req).status)
 
 ## Fora desta fase
 
-Chamada real ao Claude Agent SDK (spike pendente — ver `agent_client.py`) ·
 Headroom proxy · Caveman · Token Budget Scheduler funcional (enforcement de
 cota/pausa) · isolamento por container Docker por tarefa (usamos `git
 worktree` num volume compartilhado) · paralelismo de execução (RF-21) ·
