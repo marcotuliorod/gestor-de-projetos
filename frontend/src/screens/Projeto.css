@@ -1,0 +1,124 @@
+.projeto {
+  padding: 16px 16px 32px;
+  max-width: 720px;
+}
+
+.projeto-loading {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--text2);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px 0 8px;
+  margin-left: -8px;
+  color: var(--text2);
+  font-size: 14px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+.back-link:hover {
+  background: var(--surface);
+  text-decoration: none;
+}
+
+.projeto-header h1 {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.projeto-meta {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.metrics-grid {
+  margin-top: 24px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.metric-value {
+  margin-top: 5px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--text);
+}
+
+.section-title {
+  margin-top: 28px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.projeto-empty {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--text2);
+}
+
+.history-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.history-icon {
+  width: 16px;
+  flex: none;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.history-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-summary {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.history-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text3);
+}

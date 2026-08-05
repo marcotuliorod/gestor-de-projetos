@@ -4,15 +4,20 @@ Painel para gestão de múltiplos projetos de software, leitura de status real
 via git/GitHub e orquestração de agentes Claude Code. Ver PRD para o escopo
 completo.
 
-**Estado atual:** Fase 0 (infra local) + esqueleto de backend/API da Fase 1.
-Sem integração real com GitHub/agentes e sem frontend ainda.
+**Estado atual:** Fase 0 (infra local) + backend/API da Fase 1 + frontend React
+inicial (Board, Config, detalhe de Projeto) implementando o design de
+referência (`design/Gestor de Projetos.dc.html`). Sem integração real com
+GitHub/agentes ainda — ver "Fora desta fase".
 
 ## Stack
 
 Django (ASGI) + Django REST Framework · PostgreSQL · Celery + Redis
-(worker/beat) · Flower · tudo via `docker-compose`.
+(worker/beat) · Flower · tudo via `docker-compose`. Frontend: React + Vite +
+TypeScript + React Router, consumindo a API Django.
 
 ## Como subir (local)
+
+Backend:
 
 ```bash
 cp .env.example .env
@@ -23,26 +28,39 @@ docker compose run --rm web python manage.py migrate
 docker compose run --rm web python manage.py createsuperuser
 ```
 
+Frontend (em outro terminal):
+
+```bash
+cd frontend
+npm install
+npm run dev                          # http://localhost:5173, com proxy /api -> :8000
+```
+
 Serviços:
 
-| URL                          | O quê            |
-|------------------------------|------------------|
-| http://localhost:8000/healthz | Health check     |
-| http://localhost:8000/admin/  | Django admin     |
-| http://localhost:8000/api/projects/ | CRUD de projetos (DRF) |
-| http://localhost:8000/api/board/    | Board read-only        |
-| http://localhost:5555/        | Flower (Celery)  |
+| URL | O quê |
+|---|---|
+| `localhost:5173/` | Frontend (React + Vite) |
+| `localhost:8000/healthz` | Health check |
+| `localhost:8000/admin/` | Django admin |
+| `localhost:8000/api/projects/` | CRUD de projetos (DRF) |
+| `localhost:8000/api/board/` | Board read-only |
+| `localhost:8000/api/snapshots/?project=<id>` | Histórico de status de um projeto |
+| `localhost:5555/` | Flower (Celery) |
 
 ## Estrutura
 
-```
+```text
 config/            projeto Django (settings, celery, asgi, urls)
 apps/core/         health check
-apps/projects/     Project + CRUD (RF-01/02/03)
-apps/status/       StatusSnapshot + Board + coletor stub (RF-04/05/06)
+apps/projects/     Project + CRUD (RF-01/02/03) + action collect_status
+apps/status/       StatusSnapshot + Board + histórico + coletor stub (RF-04/05/06)
 apps/agents/       TaskRun (esqueleto, RF-07..10)
 apps/budget/       BudgetWindow (esqueleto, RF-11..13)
-frontend/          placeholder — aguarda design-briefs
+design/             .dc.html exportados do Claude Design (fonte de verdade de UI)
+frontend/           React + Vite + TS — Board, Config, Projeto reais; Fila/Cota
+                     como placeholder honesto (backend de agentes/orçamento
+                     ainda não existe)
 ```
 
 ## Testar o coletor de status (stub)

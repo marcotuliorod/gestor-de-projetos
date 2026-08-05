@@ -1,0 +1,146 @@
+.config {
+  padding: 20px 16px 32px;
+  max-width: 640px;
+}
+
+.config h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.config-section-title {
+  margin-top: 28px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.config-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.segmented {
+  margin-top: 12px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.segmented-item {
+  flex: 1;
+  height: 44px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text2);
+}
+.segmented-item.active {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.project-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.project-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.project-form input {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+.list-card {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.list-empty {
+  padding: 16px;
+  font-size: 14px;
+  color: var(--text2);
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.list-row:last-child {
+  border-bottom: none;
+}
+
+.list-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-row-name {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.list-row-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.list-row-delete {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.list-row-delete:hover {
+  background: var(--hover);
+  color: var(--att);
+}
+
+.badge-pending {
+  font-size: 12px;
+  color: var(--text3);
+}

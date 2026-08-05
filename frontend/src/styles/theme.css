@@ -1,0 +1,170 @@
+/* Design tokens extracted from design/Gestor de Projetos.dc.html — keep in sync
+   with that file if the source design changes. */
+
+:root,
+:root[data-theme='dark'] {
+  --canvas: #000000;
+  --surface: #0f0f10;
+  --raised: #18181a;
+  --hover: #212124;
+  --border: #27272a;
+  --border-strong: #3f3f46;
+  --text: #fafafa;
+  --text2: #a1a1aa;
+  --text3: #71717a;
+  --disabled: #52525b;
+  --att: #f87171;
+  --run: #fbbf24;
+  --ok: #4ade80;
+  --info: #93c5fd;
+  --btn-bg: #fafafa;
+  --btn-fg: #000000;
+  --add: rgba(74, 222, 128, 0.1);
+  --del: rgba(248, 113, 113, 0.1);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme='light'] {
+  --canvas: #ffffff;
+  --surface: #fafafa;
+  --raised: #f4f4f5;
+  --hover: #e4e4e7;
+  --border: #e4e4e7;
+  --border-strong: #a1a1aa;
+  --text: #09090b;
+  --text2: #52525b;
+  --text3: #71717a;
+  --disabled: #a1a1aa;
+  --att: #dc2626;
+  --run: #d97706;
+  --ok: #16a34a;
+  --info: #2563eb;
+  --btn-bg: #09090b;
+  --btn-fg: #ffffff;
+  --add: rgba(22, 163, 74, 0.1);
+  --del: rgba(220, 38, 38, 0.1);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    --canvas: #ffffff;
+    --surface: #fafafa;
+    --raised: #f4f4f5;
+    --hover: #e4e4e7;
+    --border: #e4e4e7;
+    --border-strong: #a1a1aa;
+    --text: #09090b;
+    --text2: #52525b;
+    --text3: #71717a;
+    --disabled: #a1a1aa;
+    --att: #dc2626;
+    --run: #d97706;
+    --ok: #16a34a;
+    --info: #2563eb;
+    --btn-bg: #09090b;
+    --btn-fg: #ffffff;
+    --add: rgba(22, 163, 74, 0.1);
+    --del: rgba(220, 38, 38, 0.1);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--canvas);
+}
+
+body {
+  font-family:
+    Inter,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--info);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+textarea,
+input {
+  font-family: inherit;
+}
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+  border: 3px solid var(--canvas);
+}
+
+@keyframes gp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+@keyframes gp-rise {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes gp-sheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes gp-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--disabled);
+}

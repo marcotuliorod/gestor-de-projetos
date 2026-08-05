@@ -24,3 +24,20 @@ class BoardView(generics.ListAPIView):
             latest,
             key=lambda s: (STATE_URGENCY.get(s.state, 99), s.project.name),
         )
+
+
+class SnapshotHistoryView(generics.ListAPIView):
+    """Histórico de snapshots de um projeto, mais recente primeiro.
+
+    Usado pela tela de detalhe do projeto (RF-04). Filtra por ?project=<id>.
+    """
+
+    serializer_class = StatusSnapshotSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = StatusSnapshot.objects.select_related("project").order_by("-created_at")
+        project_id = self.request.query_params.get("project")
+        if project_id:
+            qs = qs.filter(project_id=project_id)
+        return qs
