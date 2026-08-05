@@ -5,10 +5,13 @@ via git/GitHub e orquestração de agentes Claude Code. Ver PRD para o escopo
 completo.
 
 **Estado atual:** Fase 0 (infra local) + backend/API da Fase 1 + frontend React
-inicial (Board, Config, detalhe de Projeto) implementando o design de
-referência (`design/Gestor de Projetos.dc.html`) + coletor de status real via
-GitHub App (webhook + polling). Sem execução de agentes ainda — ver "Fora
-desta fase".
+(Board, Config, Projeto) implementando o design de referência
+(`design/Gestor de Projetos.dc.html`) + coletor de status real via GitHub App
+(webhook + polling) + **execução de agentes** (RF-07..10, RF-17..20):
+Composer → orquestração Discuss→Plan→Execute→Verify (Celery, isolada por
+`git worktree`) → Diff review → Aprovar/Pedir ajustes/Descartar. A chamada
+real ao Claude Agent SDK ainda não foi implementada (ver "AGENTS_FAKE_MODE"
+abaixo) — todo o resto do fluxo já roda de ponta a ponta.
 
 ## Stack
 
@@ -32,8 +35,19 @@ cp .env.example .env
 docker compose up --build            # sobe db, redis, web, worker, beat, flower
 docker compose run --rm web python manage.py migrate
 docker compose run --rm web python manage.py createsuperuser
-docker compose run --rm web python manage.py bootstrap_beat_schedule  # coleta periódica a cada 20min
+docker compose run --rm web python manage.py bootstrap_beat_schedule          # coleta periódica a cada 20min
+docker compose run --rm web python manage.py bootstrap_agents_beat_schedule   # fila noturna de agentes às 02:00
 ```
+
+**Execução de agentes:** `AGENTS_FAKE_MODE=True` (padrão) faz o agente
+escrever uma mudança determinística e trivial no worktree em vez de chamar
+uma API real — todo o resto (worktree, branch, diff, aprovação, PR) já é
+real. Antes de rodar com `AGENTS_FAKE_MODE=False`, é preciso confirmar o
+pacote/assinatura reais do Claude Agent SDK Python (spike pendente, ver
+`apps/agents/agent_client.py`) e preencher `ANTHROPIC_API_KEY`. Também exige
+credenciais reais de GitHub App (ver acima) — sem elas, a preparação do
+worktree falha de forma controlada (`TaskRun` vai para `failed` com um erro
+claro, o Board é atualizado imediatamente).
 
 Para o webhook do GitHub apontar para o backend local, use `smee.io` ou
 `ngrok` fazendo forward para `http://localhost:8000/api/webhooks/github/`
@@ -58,6 +72,11 @@ Serviços:
 | `localhost:8000/api/board/` | Board read-only |
 | `localhost:8000/api/snapshots/?project=<id>` | Histórico de status de um projeto |
 | `localhost:8000/api/webhooks/github/` | Webhook do GitHub (POST, HMAC verificado) |
+| `localhost:8000/api/task-runs/` | Execução de agentes: criar/listar tarefas |
+| `localhost:8000/api/task-runs/<id>/diff/` | Diff computado on-demand do worktree |
+| `localhost:8000/api/task-runs/<id>/approve/` | Único endpoint que faz push + abre PR |
+| `localhost:8000/api/task-runs/<id>/{request-changes,discard,retry}/` | Ciclo de vida da revisão |
+| `localhost:8000/api/task-runs/<id>/stream/` | SSE (best-effort) dos passos da execução |
 | `localhost:5555/` | Flower (Celery) |
 
 ## Estrutura
@@ -68,12 +87,14 @@ apps/core/         health check
 apps/projects/     Project + CRUD (RF-01/02/03) + action collect_status
 apps/status/       StatusSnapshot + Board + histórico + coletor real via
                      GitHub App (webhook + polling, RF-04/05/06)
-apps/agents/       TaskRun (esqueleto, RF-07..10)
+apps/agents/       TaskRun/TaskRunStep, workspace (worktree git), roteamento
+                     de modelo, orquestração Discuss→Plan→Execute→Verify e
+                     API de execução de agentes (RF-07..10, RF-17..20)
 apps/budget/       BudgetWindow (esqueleto, RF-11..13)
 design/             .dc.html exportados do Claude Design (fonte de verdade de UI)
-frontend/           React + Vite + TS — Board, Config, Projeto reais; Fila/Cota
-                     como placeholder honesto (backend de agentes/orçamento
-                     ainda não existe)
+frontend/           React + Vite + TS — Board, Config, Projeto, Composer, Run,
+                     Diff e Fila reais; Cota como placeholder honesto
+                     (Token Budget Scheduler ainda não existe)
 ```
 
 ## Testar o coletor de status
@@ -106,7 +127,15 @@ print(urllib.request.urlopen(req).status)
 
 ## Fora desta fase
 
-Execução de agentes (GSD Core / Agent SDK) · Headroom proxy · Caveman ·
-Token Budget Scheduler funcional · streaming SSE ao vivo · frontend/PWA ·
-deploy VPS/Tailscale/Caddy · clone/worktree local (ahead/behind fora do
-contexto de um PR aberto fica 0/0 até essa fase).
+Chamada real ao Claude Agent SDK (spike pendente — ver `agent_client.py`) ·
+Headroom proxy · Caveman · Token Budget Scheduler funcional (enforcement de
+cota/pausa) · isolamento por container Docker por tarefa (usamos `git
+worktree` num volume compartilhado) · paralelismo de execução (RF-21) ·
+frontend/PWA · deploy VPS/Tailscale/Caddy.
+
+**Nota de arquitetura:** o PRD original previa disparar o GSD Core
+(`@opengsd/gsd-core`) via subprocess com comandos `/gsd-*`. Pesquisa contra a
+documentação oficial do Claude Code confirmou que slash commands não
+funcionam em modo headless (`-p`) — premissa inválida para um worker Celery
+sem humano no teclado. A orquestração aqui autora seus próprios prompts por
+fase via Agent SDK em vez de depender do GSD Core para execução headless.

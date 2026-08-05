@@ -1,0 +1,104 @@
+.fila {
+  padding: 20px 16px 8px;
+}
+
+.fila-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fila h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.fila-subtitle {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text2);
+}
+
+.fila-empty {
+  margin-top: 40px;
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--text2);
+}
+
+.fila-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fila-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 150ms ease-out;
+}
+.fila-row:hover {
+  background: var(--hover);
+  text-decoration: none;
+}
+
+.fila-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.fila-row-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.fila-project {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fila-urgency {
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.fila-instruction {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--text2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila-state {
+  font-size: 12px;
+  color: var(--text3);
+  white-space: nowrap;
+  flex: none;
+}
+.fila-state-precisa_de_voce,
+.fila-state-failed {
+  color: var(--att);
+}
+.fila-state-running {
+  color: var(--run);
+}
+.fila-state-done,
+.fila-state-needs_review {
+  color: var(--ok);
+}

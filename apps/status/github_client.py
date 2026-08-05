@@ -4,15 +4,22 @@ import github
 from django.conf import settings
 
 
-def get_installation_client(installation_id: str | None = None) -> github.Github:
+def get_installation_token(installation_id: str | None = None) -> str:
     """Autentica a GitHub App (JWT RS256) e troca por um installation
-    access token, retornando um client já escopado a essa instalação.
+    access token, retornando a string do token — usada como credencial
+    HTTPS do git (clone/fetch/push) pelo módulo de worktrees dos agentes.
     """
     private_key = base64.b64decode(settings.GITHUB_APP_PRIVATE_KEY_B64).decode()
     integration = github.GithubIntegration(settings.GITHUB_APP_ID, private_key)
     inst_id = int(installation_id or settings.GITHUB_APP_INSTALLATION_ID)
-    access_token = integration.get_access_token(inst_id)
-    return github.Github(auth=github.Auth.Token(access_token.token))
+    return integration.get_access_token(inst_id).token
+
+
+def get_installation_client(installation_id: str | None = None) -> github.Github:
+    """Mesma troca de token, retornando um client PyGithub já escopado a
+    essa instalação (para chamadas REST)."""
+    token = get_installation_token(installation_id)
+    return github.Github(auth=github.Auth.Token(token))
 
 
 def collect_repo_status(gh: github.Github, owner: str, repo_name: str) -> dict:

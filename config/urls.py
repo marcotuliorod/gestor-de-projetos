@@ -8,5 +8,6 @@ urlpatterns = [
     path("healthz", include("apps.core.urls")),
     path("api/", include("apps.projects.urls")),
     path("api/", include("apps.status.urls")),
+    path("api/", include("apps.agents.urls")),
     path("api/webhooks/github/", github_webhook, name="github-webhook"),
 ]

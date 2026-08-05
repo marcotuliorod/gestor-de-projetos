@@ -34,6 +34,50 @@ export interface StatusSnapshot {
   created_at: string
 }
 
+export type TaskRunUrgency = 'now' | 'nightly'
+export type TaskRunState = 'queued' | 'running' | 'needs_review' | 'done' | 'failed' | 'discarded'
+export type TaskRunPhase = 'discuss' | 'plan' | 'execute' | 'verify' | 'ship'
+export type TaskRunStepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped'
+
+export interface TaskRunStep {
+  id: number
+  phase: TaskRunPhase
+  attempt: number
+  status: TaskRunStepStatus
+  model_used: string
+  detail: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export interface TaskRun {
+  id: number
+  project: number
+  project_name: string
+  instruction: string
+  urgency: TaskRunUrgency
+  state: TaskRunState
+  model_used: string
+  summary: string
+  pr_url: string
+  branch_name: string
+  created_at: string
+  updated_at: string
+  steps: TaskRunStep[]
+}
+
+export interface DiffLine {
+  type: 'context' | 'add' | 'del'
+  text: string
+}
+
+export interface DiffFile {
+  path: string
+  added: number
+  removed: number
+  lines: DiffLine[]
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
@@ -70,4 +114,30 @@ export const api = {
     request<{ queued: boolean }>(`/api/projects/${projectId}/collect_status/`, {
       method: 'POST',
     }),
+
+  listTaskRuns: () =>
+    request<{ results: TaskRun[] }>('/api/task-runs/').then((r) => r.results),
+
+  getTaskRun: (id: number | string) => request<TaskRun>(`/api/task-runs/${id}/`),
+
+  createTaskRun: (data: { project: number; instruction: string; urgency: TaskRunUrgency }) =>
+    request<TaskRun>('/api/task-runs/', { method: 'POST', body: JSON.stringify(data) }),
+
+  getTaskRunDiff: (id: number | string) =>
+    request<{ files: DiffFile[] }>(`/api/task-runs/${id}/diff/`),
+
+  approveTaskRun: (id: number | string) =>
+    request<TaskRun>(`/api/task-runs/${id}/approve/`, { method: 'POST' }),
+
+  requestChanges: (id: number | string, instruction: string) =>
+    request<TaskRun>(`/api/task-runs/${id}/request-changes/`, {
+      method: 'POST',
+      body: JSON.stringify({ instruction }),
+    }),
+
+  discardTaskRun: (id: number | string) =>
+    request<TaskRun>(`/api/task-runs/${id}/discard/`, { method: 'POST' }),
+
+  retryTaskRun: (id: number | string) =>
+    request<TaskRun>(`/api/task-runs/${id}/retry/`, { method: 'POST' }),
 }

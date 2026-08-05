@@ -4,10 +4,12 @@ from apps.projects.models import Project
 
 
 class TaskRun(models.Model):
-    """Esqueleto de uma execução de tarefa por agente (RF-07..10).
+    """Uma execução de tarefa por agente (RF-07..10, RF-17..20).
 
-    Reserva o formato dos dados; a orquestração real (GSD Core / Agent SDK
-    via subprocess, streaming, diff/PR) entra em fases posteriores.
+    O loop real (Discuss→Plan→Execute→Verify→Ship) é orquestrado por
+    apps.agents.tasks.run_task_run; cada fase gera um TaskRunStep. "Ship"
+    (push + abertura de PR) só roda após aprovação humana via /approve/ —
+    nunca automaticamente (RNF-01/RF-10).
     """
 
     class Urgency(models.TextChoices):
@@ -20,6 +22,7 @@ class TaskRun(models.Model):
         NEEDS_REVIEW = "needs_review", "Precisa de revisão"
         DONE = "done", "Concluída"
         FAILED = "failed", "Falhou"
+        DISCARDED = "discarded", "Descartada"
 
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="task_runs"
@@ -31,11 +34,22 @@ class TaskRun(models.Model):
     state = models.CharField(
         max_length=15, choices=State.choices, default=State.QUEUED
     )
-    # Modelo efetivamente usado (auditoria de custo, RF-20).
+    # Modelo efetivamente usado (auditoria de custo, RF-20) — visão geral;
+    # o registro por fase fica em TaskRunStep.model_used.
     model_used = models.CharField(max_length=20, blank=True)
     # Resumo de até 2 linhas do que foi feito (RF-06).
     summary = models.CharField(max_length=280, blank=True)
     pr_url = models.URLField(blank=True)
+
+    # Branch dedicado do worktree deste run e o branch padrão do repo no
+    # momento em que o run começou (para diff/push/PR).
+    branch_name = models.CharField(max_length=255, blank=True)
+    base_branch = models.CharField(max_length=255, blank=True)
+    # Texto acumulado de "Pedir ajustes" — realimenta o loop na próxima
+    # tentativa de Execute.
+    adjustment_instructions = models.TextField(blank=True)
+    # Falhas seguidas de Verify — dispara escalonamento Sonnet→Opus (RF-20).
+    consecutive_verify_failures = models.PositiveSmallIntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -45,3 +59,47 @@ class TaskRun(models.Model):
 
     def __str__(self):
         return f"{self.project.name}: {self.instruction[:40]}"
+
+
+class TaskRunStep(models.Model):
+    """Uma fase (Discuss/Plan/Execute/Verify/Ship) de um TaskRun (RF-17).
+
+    Fonte de verdade para a lista de passos da tela de Run — um GET a
+    qualquer momento reconstrói o histórico completo mesmo que o SSE
+    perca eventos.
+    """
+
+    class Phase(models.TextChoices):
+        DISCUSS = "discuss", "Discuss"
+        PLAN = "plan", "Plan"
+        EXECUTE = "execute", "Execute"
+        VERIFY = "verify", "Verify"
+        SHIP = "ship", "Ship"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendente"
+        RUNNING = "running", "Rodando"
+        DONE = "done", "Concluído"
+        FAILED = "failed", "Falhou"
+        SKIPPED = "skipped", "Pulado"
+
+    task_run = models.ForeignKey(
+        TaskRun, on_delete=models.CASCADE, related_name="steps"
+    )
+    phase = models.CharField(max_length=10, choices=Phase.choices)
+    attempt = models.PositiveSmallIntegerField(default=1)
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PENDING
+    )
+    model_used = models.CharField(max_length=20, blank=True)
+    # Resumo textual curto do que a fase fez/encontrou — nunca o diff.
+    detail = models.TextField(blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.task_run_id} {self.phase}#{self.attempt} ({self.status})"

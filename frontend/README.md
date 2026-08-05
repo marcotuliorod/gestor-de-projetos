@@ -19,22 +19,29 @@ para `http://localhost:8000` (o backend Django) — suba o backend primeiro
 
 ```text
 src/
-  lib/api.ts        cliente HTTP tipado para a API Django (Project, StatusSnapshot)
+  lib/api.ts        cliente HTTP tipado para a API Django (Project, StatusSnapshot,
+                      TaskRun/TaskRunStep, DiffFile)
   lib/theme.ts       hook de tema (dark/light/system), persistido em localStorage
   components/        Layout (sidebar desktop + tab bar mobile), ícones
   screens/
     Board.tsx         RF-04/05: lê /api/board/ e /api/projects/, agrupado por estado
     Projeto.tsx        detalhe de um projeto + histórico de snapshots (/api/snapshots/)
     Config.tsx         tema + CRUD de projetos (cadastro manual por ora)
-    Fila.tsx, Cota.tsx  placeholders honestos — dependem de apps ainda
-                        não implementados (agents/budget)
+    Composer.tsx        compõe e dispara um TaskRun (projeto, instrução, urgência)
+    Run.tsx             passos Discuss/Plan/Execute/Verify/Ship de um TaskRun,
+                        via SSE (/stream/) com fallback de polling
+    Diff.tsx            revisão de diff (on-demand do worktree) + Aprovar/
+                        Pedir ajustes/Descartar
+    Fila.tsx            lista real de TaskRuns (RF-07/14)
+    Cota.tsx            placeholder honesto — depende do Token Budget Scheduler
   styles/theme.css    tokens de design (cores, tipografia, animações) extraídos
                        do .dc.html — mantenha em sync se o design mudar
 ```
 
 ## O que ainda não existe
 
-- Composer de nova tarefa, Wizard de projeto novo/existente, tela de Run e Diff
-  — dependem da execução de agentes (RF-07 a RF-10), que ainda não tem backend.
-- Detecção automática de stack via GitHub App — cadastro de projeto é manual.
+- Wizard de projeto novo/existente com detecção automática de stack via
+  GitHub App — cadastro de projeto é manual.
 - Barra de cota — depende do Token Budget Scheduler (RF-11 a RF-13).
+- A chamada real ao Claude Agent SDK (o backend roda em `AGENTS_FAKE_MODE`
+  por padrão — ver README raiz).

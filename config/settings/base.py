@@ -112,3 +112,14 @@ GITHUB_APP_ID = env("GITHUB_APP_ID", default="")
 GITHUB_APP_PRIVATE_KEY_B64 = env("GITHUB_APP_PRIVATE_KEY_B64", default="")
 GITHUB_APP_INSTALLATION_ID = env("GITHUB_APP_INSTALLATION_ID", default="")
 GITHUB_WEBHOOK_SECRET = env("GITHUB_WEBHOOK_SECRET", default="")
+
+# --- Execução de agentes (RF-07..10, RF-17..20) --------------------------
+# Diretório (volume compartilhado web+worker) onde mirrors/worktrees de
+# repositório ficam — ver apps/agents/workspace.py.
+AGENTS_REPO_ROOT = env("AGENTS_REPO_ROOT", default="/data/repos")
+# Credencial do Claude Agent SDK — nome exato a confirmar contra a doc
+# oficial no spike de implementação (ver apps/agents/agent_client.py).
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+# Enquanto o spike do SDK não roda, agent_client.run_phase() opera em modo
+# determinístico (sem chamar nenhuma API externa) — default True.
+AGENTS_FAKE_MODE = env.bool("AGENTS_FAKE_MODE", default=True)

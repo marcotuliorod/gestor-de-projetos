@@ -30,6 +30,7 @@ services:
     command: uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/app
+      - agent-repos:/data/repos
     env_file: .env
     ports:
       - "8000:8000"
@@ -44,6 +45,7 @@ services:
     command: celery -A config worker --loglevel=info
     volumes:
       - .:/app
+      - agent-repos:/data/repos
     env_file: .env
     depends_on:
       - db
@@ -72,3 +74,4 @@ services:
 
 volumes:
   postgres-data:
+  agent-repos:

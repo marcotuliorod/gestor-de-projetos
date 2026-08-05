@@ -1,0 +1,159 @@
+.run {
+  padding: 16px 16px 32px;
+  max-width: 640px;
+}
+
+.run-loading {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--text2);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px 0 8px;
+  margin-left: -8px;
+  color: var(--text2);
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 10px;
+}
+.back-link:hover {
+  background: var(--surface);
+  text-decoration: none;
+}
+
+.run-meta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.run-repo {
+  font-size: 13px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.run-badge {
+  font-size: 13px;
+  color: var(--text2);
+}
+.run-badge-precisa_de_voce,
+.run-badge-failed {
+  color: var(--att);
+}
+.run-badge-running {
+  color: var(--run);
+}
+.run-badge-done,
+.run-badge-needs_review {
+  color: var(--ok);
+}
+
+.run-instruction {
+  margin: 10px 0 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.run-steps {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.run-step {
+  display: flex;
+  gap: 14px;
+}
+
+.run-step-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 16px;
+  flex: none;
+}
+
+.run-step-icon {
+  font-size: 12px;
+  line-height: 22px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--disabled);
+}
+.run-step-icon-done {
+  color: var(--ok);
+}
+.run-step-icon-failed {
+  color: var(--att);
+}
+.run-step-icon-running {
+  color: var(--run);
+}
+
+.run-step-line {
+  flex: 1;
+  width: 1px;
+  background: var(--border);
+  min-height: 12px;
+}
+
+.run-step-body {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 16px;
+}
+
+.run-step-label {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.run-step-detail {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text2);
+  white-space: pre-wrap;
+}
+
+.run-diff-btn {
+  width: 100%;
+  height: 48px;
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.run-error-card {
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: 14px;
+}
+
+.run-error-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.run-error-actions .btn-primary,
+.run-error-actions .btn-secondary {
+  flex: 1;
+  height: 44px;
+  justify-content: center;
+}

@@ -37,6 +37,9 @@ export function Projeto() {
             {project.repo_url || 'sem repositório'} {project.stack && `· ${project.stack}`}
           </div>
         </div>
+        <Link to={`/composer?project=${project.id}`} className="btn-primary" style={{ padding: '0 18px', display: 'inline-flex' }}>
+          Nova tarefa aqui
+        </Link>
       </div>
 
       <div className="metrics-grid">
