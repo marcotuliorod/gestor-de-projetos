@@ -24,6 +24,21 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # Necessário desde o RF-21: workspace._project_git_lock usa um lock
+      # Redis para serializar as operações git de um mesmo projeto. É
+      # mecanismo de correção (protege o mirror compartilhado), então não
+      # degrada silenciosamente quando falta Redis — é o CI que precisa
+      # espelhar o docker-compose.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DJANGO_SECRET_KEY: ci-test-secret-key
