@@ -29,7 +29,7 @@ export function Layout() {
           ))}
         </nav>
         <div className="sidebar-actions">
-          <NavLink to="/config" className="btn-primary">
+          <NavLink to="/projetos/novo" className="btn-primary">
             + Projeto
           </NavLink>
         </div>

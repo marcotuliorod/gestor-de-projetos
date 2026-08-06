@@ -6,6 +6,7 @@ import { Config } from './screens/Config'
 import { Cota } from './screens/Cota'
 import { Diff } from './screens/Diff'
 import { Fila } from './screens/Fila'
+import { NovoProjeto } from './screens/NovoProjeto'
 import { Projeto } from './screens/Projeto'
 import { Run } from './screens/Run'
 
@@ -14,6 +15,7 @@ function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Board />} />
+        <Route path="projetos/novo" element={<NovoProjeto />} />
         <Route path="projetos/:id" element={<Projeto />} />
         <Route path="composer" element={<Composer />} />
         <Route path="runs/:id" element={<Run />} />

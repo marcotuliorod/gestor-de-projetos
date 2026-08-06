@@ -16,6 +16,31 @@ export interface Project {
   updated_at: string
 }
 
+export interface AvailableRepo {
+  full_name: string
+  owner: string
+  name: string
+  private: boolean
+  language: string
+  description: string
+  updated_at: string
+  html_url: string
+  already_added: boolean
+}
+
+export interface DetectedStack {
+  stack: string
+  build_command: string
+  test_command: string
+  lint_command: string
+  /** Subpasta onde o manifesto foi encontrado, vazia quando está na raiz. */
+  subdir: string
+  detected_from: string[]
+  owner: string
+  name: string
+  repo_url: string
+}
+
 export type ProjectState = 'precisa_de_voce' | 'rodando' | 'em_dia' | 'parado'
 
 export interface StatusSnapshot {
@@ -137,6 +162,14 @@ export const api = {
 
   deleteProject: (id: number) =>
     request<void>(`/api/projects/${id}/`, { method: 'DELETE' }),
+
+  availableRepos: () => request<AvailableRepo[]>('/api/projects/available-repos/'),
+
+  detectStack: (data: { owner: string; name: string } | { repo_url: string }) =>
+    request<DetectedStack>('/api/projects/detect-stack/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   getBoard: () => request<StatusSnapshot[]>('/api/board/'),
 
