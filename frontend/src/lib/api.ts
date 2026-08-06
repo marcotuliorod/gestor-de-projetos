@@ -43,6 +43,12 @@ export interface DetectedStack {
 
 export type ProjectState = 'precisa_de_voce' | 'rodando' | 'em_dia' | 'parado'
 
+export interface CiCheck {
+  name: string
+  conclusion: string
+  status: string
+}
+
 export interface StatusSnapshot {
   id: number
   project: number
@@ -54,6 +60,9 @@ export interface StatusSnapshot {
   ci_status: string
   last_commit: string
   changed_files: number
+  checks: CiCheck[]
+  /** Só vem preenchida quando o CI do projeto publica o número. */
+  coverage_pct: number | null
   state: ProjectState
   summary: string
   created_at: string

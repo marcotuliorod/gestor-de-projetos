@@ -40,6 +40,12 @@ class StatusSnapshot(models.Model):
     last_commit = models.CharField(max_length=500, blank=True)
     changed_files = models.IntegerField(default=0)
 
+    # Checks individuais do CI ([{name, conclusion, status}]) e cobertura,
+    # ambos "quando disponível" (RF-04): a cobertura só vem preenchida se o
+    # CI do projeto publicar o número no output do check-run.
+    checks = models.JSONField(default=list, blank=True)
+    coverage_pct = models.FloatField(null=True, blank=True)
+
     state = models.CharField(
         max_length=20,
         choices=ProjectState.choices,

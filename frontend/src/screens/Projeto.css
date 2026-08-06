@@ -122,3 +122,54 @@
   font-size: 12px;
   color: var(--text3);
 }
+
+.checks-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.check-row:last-child {
+  border-bottom: none;
+}
+
+.check-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  flex: none;
+}
+.check-ok {
+  background: var(--ok);
+}
+.check-fail {
+  background: var(--att);
+}
+.check-run {
+  background: var(--run);
+}
+
+.check-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-result {
+  font-size: 12px;
+  color: var(--text3);
+  flex: none;
+}

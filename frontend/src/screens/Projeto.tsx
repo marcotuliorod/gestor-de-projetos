@@ -1,7 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type Project, type StatusSnapshot } from '../lib/api'
+import { api, type CiCheck, type Project, type StatusSnapshot } from '../lib/api'
 import './Projeto.css'
+
+const CONCLUSION_LABEL: Record<string, string> = {
+  success: 'passou',
+  failure: 'falhou',
+  cancelled: 'cancelado',
+  skipped: 'pulado',
+  timed_out: 'estourou o tempo',
+  action_required: 'exige ação',
+  neutral: 'neutro',
+}
+
+function checkTone(check: CiCheck): 'ok' | 'fail' | 'run' {
+  if (check.status !== 'completed') return 'run'
+  return check.conclusion === 'success' ? 'ok' : 'fail'
+}
+
+function checkLabel(check: CiCheck): string {
+  if (check.status !== 'completed') return 'rodando'
+  return CONCLUSION_LABEL[check.conclusion] ?? check.conclusion
+}
 
 export function Projeto() {
   const { id } = useParams<{ id: string }>()
@@ -48,8 +68,27 @@ export function Projeto() {
         <Metric label="PRs abertos" value={latest ? String(latest.open_prs) : '—'} />
         <Metric label="Arquivos modificados" value={latest ? String(latest.changed_files) : '—'} />
         <Metric label="CI" value={latest?.ci_status || '—'} />
+        <Metric
+          label="Cobertura"
+          value={latest?.coverage_pct != null ? `${latest.coverage_pct}%` : '—'}
+        />
         <Metric label="Modelo padrão" value={project.default_model} />
       </div>
+
+      {latest && latest.checks.length > 0 && (
+        <>
+          <div className="section-title">Checks do CI</div>
+          <div className="checks-list">
+            {latest.checks.map((check) => (
+              <div key={check.name} className="check-row">
+                <span className={`check-dot check-${checkTone(check)}`} />
+                <span className="check-name">{check.name}</span>
+                <span className="check-result">{checkLabel(check)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="section-title">Histórico de status</div>
       {history.length === 0 && <div className="projeto-empty">Nenhum snapshot coletado ainda.</div>}

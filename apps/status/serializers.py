@@ -19,6 +19,8 @@ class StatusSnapshotSerializer(serializers.ModelSerializer):
             "ci_status",
             "last_commit",
             "changed_files",
+            "checks",
+            "coverage_pct",
             "state",
             "summary",
             "created_at",
