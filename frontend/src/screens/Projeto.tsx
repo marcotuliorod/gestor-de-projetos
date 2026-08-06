@@ -57,9 +57,14 @@ export function Projeto() {
             {project.repo_url || 'sem repositório'} {project.stack && `· ${project.stack}`}
           </div>
         </div>
-        <Link to={`/composer?project=${project.id}`} className="btn-primary" style={{ padding: '0 18px', display: 'inline-flex' }}>
-          Nova tarefa aqui
-        </Link>
+        <div className="projeto-actions">
+          <Link to={`/projetos/${project.id}/editar`} className="btn-secondary" style={{ padding: '0 16px', display: 'inline-flex' }}>
+            Editar
+          </Link>
+          <Link to={`/composer?project=${project.id}`} className="btn-primary" style={{ padding: '0 18px', display: 'inline-flex' }}>
+            Nova tarefa aqui
+          </Link>
+        </div>
       </div>
 
       <div className="metrics-grid">

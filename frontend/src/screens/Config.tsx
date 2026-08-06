@@ -63,13 +63,13 @@ export function Config() {
         {!loading && projects.length === 0 && <div className="list-empty">Nenhum projeto cadastrado.</div>}
         {projects.map((p) => (
           <div key={p.id} className="list-row">
-            <div className="list-row-main">
+            <Link className="list-row-main" to={`/projetos/${p.id}/editar`}>
               <div className="list-row-name">{p.name}</div>
               <div className="list-row-meta">
                 {p.default_model} · peso {p.priority_weight}
                 {p.stack ? ` · ${p.stack}` : ''}
               </div>
-            </div>
+            </Link>
             <button className="list-row-delete" onClick={() => handleDelete(p.id)} aria-label={`Remover ${p.name}`}>
               ✕
             </button>

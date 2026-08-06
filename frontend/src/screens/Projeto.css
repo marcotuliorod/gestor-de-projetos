@@ -173,3 +173,14 @@
   color: var(--text3);
   flex: none;
 }
+
+.projeto-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.projeto-actions .btn-secondary,
+.projeto-actions .btn-primary {
+  text-decoration: none;
+  white-space: nowrap;
+}

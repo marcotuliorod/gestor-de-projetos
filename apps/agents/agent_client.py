@@ -141,6 +141,23 @@ def _build_prompt(phase: str, project, instruction: str, context: dict) -> str:
     return f"Resuma em até 2 linhas o resultado final da tarefa: {instruction}"
 
 
+def disallowed_tools_for(project) -> list[str]:
+    """Traduz `Project.agent_permissions` em ferramentas bloqueadas (RF-03).
+
+    Os defaults preservam o comportamento anterior ao campo existir (tudo
+    liberado) — projetos já cadastrados têm `agent_permissions` vazio e não
+    podem mudar de comportamento em silêncio só porque a tela de edição
+    passou a existir.
+    """
+    permissions = project.agent_permissions or {}
+    blocked = []
+    if not permissions.get("allow_bash", True):
+        blocked.append("Bash")
+    if not permissions.get("allow_web", True):
+        blocked.extend(["WebFetch", "WebSearch"])
+    return blocked
+
+
 def _run_phase_real(phase, model, project, instruction, worktree_path, context) -> PhaseResult:
     from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKError
 
@@ -157,6 +174,7 @@ def _run_phase_real(phase, model, project, instruction, worktree_path, context) 
         # é a opção documentada para containers Docker sem privilégio extra.
         sandbox={"enabled": True, "enableWeakerNestedSandbox": True},
         max_turns=MAX_TURNS_PER_PHASE,
+        disallowed_tools=disallowed_tools_for(project),
     )
 
     try:
