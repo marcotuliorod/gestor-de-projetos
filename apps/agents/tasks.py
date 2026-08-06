@@ -188,6 +188,31 @@ def dispatch_nightly_queue():
         send_telegram_message(f"⏸️ {state['warn_text']}")
         return
 
-    runs = TaskRun.objects.filter(state=TaskRun.State.QUEUED, urgency=TaskRun.Urgency.NIGHTLY)
+    # Peso alto primeiro, sempre; empate resolvido pela ordem de chegada
+    # (RF-13). Na faixa de atenção, os projetos de peso baixo nem saem: ficam
+    # QUEUED e voltam a concorrer na próxima noite ou depois do reset.
+    runs = TaskRun.objects.filter(
+        state=TaskRun.State.QUEUED, urgency=TaskRun.Urgency.NIGHTLY
+    ).order_by("-project__priority_weight", "created_at")
+
+    held_back = 0
+    if state["prioritizing_by_weight"]:
+        cutoff = state["high_priority_weight"]
+        held_back = runs.filter(project__priority_weight__lt=cutoff).count()
+        runs = runs.filter(project__priority_weight__gte=cutoff)
+
+    dispatched = 0
     for task_run_id in runs.values_list("id", flat=True):
         run_task_run.delay(task_run_id)
+        dispatched += 1
+
+    if held_back:
+        logger.info(
+            "dispatch_nightly_queue: %s tarefa(s) retida(s) por peso baixo, %s despachada(s)",
+            held_back,
+            dispatched,
+        )
+        send_telegram_message(
+            f"⚖️ Orçamento apertado: rodei {dispatched} tarefa(s) de prioridade alta e "
+            f"segurei {held_back} para a próxima noite."
+        )

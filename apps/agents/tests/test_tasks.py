@@ -164,7 +164,15 @@ class DispatchNightlyQueueTests(TestCase):
 
     @patch("apps.agents.tasks.send_telegram_message")
     @patch("apps.agents.tasks.run_task_run.delay")
-    @patch("apps.budget.tracking.budget_state", return_value={"should_pause_nightly": False, "warn_text": ""})
+    @patch(
+        "apps.budget.tracking.budget_state",
+        return_value={
+            "should_pause_nightly": False,
+            "warn_text": "",
+            "prioritizing_by_weight": False,
+            "high_priority_weight": 4,
+        },
+    )
     def test_dispatches_when_budget_ok(self, mock_state, mock_delay, mock_notify):
         from apps.agents.tasks import dispatch_nightly_queue
 
@@ -174,3 +182,109 @@ class DispatchNightlyQueueTests(TestCase):
         dispatch_nightly_queue()
         mock_delay.assert_called_once_with(task_run.id)
         mock_notify.assert_not_called()
+
+
+class NightlyQueueWeightTests(TestCase):
+    """RF-13: o peso de prioridade precisa ter efeito real. Antes disso ele
+    era ajustável na tela de Cota e não mudava nada."""
+
+    def setUp(self):
+        self.alta = Project.objects.create(name="alta", priority_weight=5)
+        self.media = Project.objects.create(name="media", priority_weight=4)
+        self.baixa = Project.objects.create(name="baixa", priority_weight=1)
+
+    def _queue(self, project):
+        return TaskRun.objects.create(
+            project=project,
+            instruction="x",
+            urgency=TaskRun.Urgency.NIGHTLY,
+            state=TaskRun.State.QUEUED,
+        )
+
+    def _state(self, prioritizing, paused=False):
+        return {
+            "should_pause_nightly": paused,
+            "warn_text": "aviso",
+            "prioritizing_by_weight": prioritizing,
+            "high_priority_weight": 4,
+        }
+
+    @patch("apps.agents.tasks.send_telegram_message")
+    @patch("apps.agents.tasks.run_task_run.delay")
+    def test_dispatches_heaviest_first(self, mock_delay, mock_notify):
+        from apps.agents.tasks import dispatch_nightly_queue
+
+        baixa = self._queue(self.baixa)
+        alta = self._queue(self.alta)
+        media = self._queue(self.media)
+
+        with patch("apps.budget.tracking.budget_state", return_value=self._state(False)):
+            dispatch_nightly_queue()
+
+        dispatched = [call.args[0] for call in mock_delay.call_args_list]
+        self.assertEqual(dispatched, [alta.id, media.id, baixa.id])
+
+    @patch("apps.agents.tasks.send_telegram_message")
+    @patch("apps.agents.tasks.run_task_run.delay")
+    def test_attention_band_holds_back_low_weight(self, mock_delay, mock_notify):
+        from apps.agents.tasks import dispatch_nightly_queue
+
+        baixa = self._queue(self.baixa)
+        alta = self._queue(self.alta)
+
+        with patch("apps.budget.tracking.budget_state", return_value=self._state(True)):
+            dispatch_nightly_queue()
+
+        dispatched = [call.args[0] for call in mock_delay.call_args_list]
+        self.assertEqual(dispatched, [alta.id])
+        # A tarefa retida não é descartada — volta a concorrer amanhã.
+        baixa.refresh_from_db()
+        self.assertEqual(baixa.state, TaskRun.State.QUEUED)
+
+    @patch("apps.agents.tasks.send_telegram_message")
+    @patch("apps.agents.tasks.run_task_run.delay")
+    def test_holding_back_notifies_once_with_counts(self, mock_delay, mock_notify):
+        from apps.agents.tasks import dispatch_nightly_queue
+
+        self._queue(self.baixa)
+        self._queue(self.baixa)
+        self._queue(self.alta)
+
+        with patch("apps.budget.tracking.budget_state", return_value=self._state(True)):
+            dispatch_nightly_queue()
+
+        mock_notify.assert_called_once()
+        text = mock_notify.call_args[0][0]
+        self.assertIn("1 tarefa(s)", text)
+        self.assertIn("segurei 2", text)
+
+    @patch("apps.agents.tasks.send_telegram_message")
+    @patch("apps.agents.tasks.run_task_run.delay")
+    def test_normal_band_holds_nothing_back(self, mock_delay, mock_notify):
+        from apps.agents.tasks import dispatch_nightly_queue
+
+        self._queue(self.baixa)
+        self._queue(self.alta)
+
+        with patch("apps.budget.tracking.budget_state", return_value=self._state(False)):
+            dispatch_nightly_queue()
+
+        self.assertEqual(mock_delay.call_count, 2)
+        mock_notify.assert_not_called()
+
+    @patch("apps.agents.tasks.send_telegram_message")
+    @patch("apps.agents.tasks.run_task_run.delay")
+    def test_critical_band_still_pauses_everything(self, mock_delay, mock_notify):
+        """Regressão do RF-12: o corte por peso não pode ter aberto uma
+        brecha para tarefas de peso alto rodarem com o orçamento estourado."""
+        from apps.agents.tasks import dispatch_nightly_queue
+
+        self._queue(self.alta)
+
+        with patch(
+            "apps.budget.tracking.budget_state",
+            return_value=self._state(False, paused=True),
+        ):
+            dispatch_nightly_queue()
+
+        mock_delay.assert_not_called()

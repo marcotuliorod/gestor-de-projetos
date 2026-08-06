@@ -120,14 +120,23 @@ export function Cota() {
       </div>
 
       <div className="cota-section-title">Consumo por projeto</div>
+      {state.prioritizing_by_weight && (
+        <div className="cota-cut-note">
+          Enquanto o orçamento estiver apertado, só projetos de peso {state.high_priority_weight} ou mais
+          saem na fila noturna. Os demais esperam a próxima noite ou o reset — nada é descartado.
+        </div>
+      )}
       {state.distribution.length === 0 && <div className="cota-empty">Nenhum gasto registrado nesta janela.</div>}
       <div className="cota-distribution">
-        {state.distribution.map((d) => (
-          <div key={d.project_id} className="cota-dist-row">
+        {state.distribution.map((d) => {
+          const heldBack = state.prioritizing_by_weight && d.priority_weight < state.high_priority_weight
+          return (
+          <div key={d.project_id} className={`cota-dist-row${heldBack ? ' cota-dist-held' : ''}`}>
             <div className="cota-dist-top">
               <span className="cota-dist-name">{d.project_name}</span>
               <span className="cota-dist-value">${d.used_usd.toFixed(2)}</span>
             </div>
+            {heldBack && <div className="cota-dist-held-label">fora da fila noturna agora</div>}
             <div className="cota-dist-weight">
               <span>Prioridade</span>
               <div className="cota-dist-weight-controls">
@@ -137,7 +146,8 @@ export function Cota() {
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="cota-section-title">Últimas semanas</div>
