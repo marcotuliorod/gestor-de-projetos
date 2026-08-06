@@ -37,6 +37,10 @@ class TaskRun(models.Model):
     # Modelo efetivamente usado (auditoria de custo, RF-20) — visão geral;
     # o registro por fase fica em TaskRunStep.model_used.
     model_used = models.CharField(max_length=20, blank=True)
+    # Override manual escolhido no Composer (RF-19). Vazio = decidir
+    # automaticamente. Tem precedência sobre Project.default_model: é uma
+    # escolha para *esta* tarefa, mais específica que o padrão do projeto.
+    model_override = models.CharField(max_length=20, blank=True)
     # Resumo de até 2 linhas do que foi feito (RF-06).
     summary = models.CharField(max_length=280, blank=True)
     pr_url = models.URLField(blank=True)

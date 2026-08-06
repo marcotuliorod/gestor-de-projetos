@@ -35,6 +35,7 @@ class TaskRunSerializer(serializers.ModelSerializer):
             "urgency",
             "state",
             "model_used",
+            "model_override",
             "summary",
             "pr_url",
             "branch_name",

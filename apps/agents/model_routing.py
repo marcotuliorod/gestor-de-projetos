@@ -27,13 +27,21 @@ _ESCALATABLE_PHASES = {Phase.PLAN, Phase.EXECUTE}
 ESCALATION_THRESHOLD = 2
 
 
-def choose_model(project: Project, phase: str, consecutive_verify_failures: int) -> str:
-    """Decide o modelo para uma fase de um TaskRun.
+def choose_model(
+    project: Project,
+    phase: str,
+    consecutive_verify_failures: int,
+    model_override: str = "",
+) -> str:
+    """Decide o modelo para uma fase de um TaskRun (RF-18/19).
 
-    Override manual do projeto (`default_model != AUTO`) sempre vence e não
-    participa do escalonamento automático — se o usuário fixou um modelo,
-    não gastamos Opus às escondidas por trás dele.
+    Precedência: override da tarefa > modelo padrão do projeto > roteamento
+    automático. Os dois primeiros são escolhas explícitas de um humano e não
+    participam do escalonamento — se alguém fixou um modelo, não gastamos
+    Opus às escondidas por trás dessa decisão.
     """
+    if model_override and model_override != Project.Model.AUTO:
+        return model_override
     if project.default_model != Project.Model.AUTO:
         return project.default_model
 

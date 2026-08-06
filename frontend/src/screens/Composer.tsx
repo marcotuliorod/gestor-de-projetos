@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type Project, type TaskRunUrgency } from '../lib/api'
+import { api, type BudgetState, type Project, type TaskRunUrgency } from '../lib/api'
 import './Composer.css'
 
 const SHORTCUTS = [
@@ -8,6 +8,14 @@ const SHORTCUTS = [
   'Subir cobertura de testes',
   'Revisar acessibilidade',
   'Corrigir avisos de lint',
+]
+
+// Vazio = deixar o roteamento automático decidir por fase e complexidade.
+const MODEL_CHOICES = [
+  { value: '', label: 'Automático' },
+  { value: 'haiku', label: 'Haiku' },
+  { value: 'sonnet', label: 'Sonnet' },
+  { value: 'opus', label: 'Opus' },
 ]
 
 export function Composer() {
@@ -19,6 +27,8 @@ export function Composer() {
   const [projectId, setProjectId] = useState<number | null>(preselected ? Number(preselected) : null)
   const [instruction, setInstruction] = useState('')
   const [urgency, setUrgency] = useState<TaskRunUrgency>('now')
+  const [modelOverride, setModelOverride] = useState('')
+  const [budget, setBudget] = useState<BudgetState | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,14 +37,30 @@ export function Composer() {
       setProjects(list)
       if (!preselected && list.length > 0) setProjectId(list[0].id)
     })
+    api.getBudgetSummary().then(setBudget).catch(() => {
+      /* o rodapé de custo é informativo — sem orçamento, some */
+    })
   }, [preselected])
+
+  // O design mostra uma estimativa de tokens aqui. Não temos como estimar
+  // isso honestamente antes de rodar, então mostramos o que sabemos de fato:
+  // qual modelo vai ser usado e quanto de cota resta.
+  const modelLabel = MODEL_CHOICES.find((m) => m.value === modelOverride)?.label ?? 'Automático'
+  const costHint = budget && budget.quota_total_usd > 0
+    ? `Modelo: ${modelLabel} · ${Math.max(0, 100 - budget.pct).toFixed(0)}% de cota livre`
+    : `Modelo: ${modelLabel}`
 
   const submit = async () => {
     if (!projectId || !instruction.trim()) return
     setSubmitting(true)
     setError(null)
     try {
-      const run = await api.createTaskRun({ project: projectId, instruction: instruction.trim(), urgency })
+      const run = await api.createTaskRun({
+        project: projectId,
+        instruction: instruction.trim(),
+        urgency,
+        model_override: modelOverride,
+      })
       navigate(`/runs/${run.id}`)
     } catch {
       setError('Não consegui criar a tarefa. Verifique se a API está no ar.')
@@ -85,6 +111,19 @@ export function Composer() {
         </button>
       </div>
 
+      <div className="composer-label">Modelo</div>
+      <div className="composer-projects">
+        {MODEL_CHOICES.map((m) => (
+          <button
+            key={m.value}
+            className={`chip${modelOverride === m.value ? ' chip-active' : ''}`}
+            onClick={() => setModelOverride(m.value)}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
       {error && <div className="composer-error">{error}</div>}
 
       <button
@@ -94,6 +133,8 @@ export function Composer() {
       >
         {submitting ? 'Enviando…' : urgency === 'now' ? 'Rodar agora' : 'Adicionar à fila noturna'}
       </button>
+
+      <div className="composer-cost">{costHint}</div>
     </div>
   )
 }

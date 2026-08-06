@@ -212,3 +212,32 @@ class StepPayloadTests(APITestCase):
         response = self.client.get(f"/api/task-runs/{task_run.id}/")
 
         self.assertIsNone(response.data["steps"][0]["cost_usd"])
+
+
+class ModelOverrideApiTests(APITestCase):
+    """RF-19: o Composer envia o modelo escolhido na criação da tarefa."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.project = Project.objects.create(name="teste")
+
+    @patch("apps.agents.views.run_task_run.delay")
+    def test_override_is_accepted_and_returned(self, mock_delay):
+        response = self.client.post(
+            "/api/task-runs/",
+            {"project": self.project.id, "instruction": "x", "urgency": "now", "model_override": "opus"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["model_override"], "opus")
+        self.assertEqual(TaskRun.objects.get(pk=response.data["id"]).model_override, "opus")
+
+    @patch("apps.agents.views.run_task_run.delay")
+    def test_omitting_override_means_automatic(self, mock_delay):
+        response = self.client.post(
+            "/api/task-runs/",
+            {"project": self.project.id, "instruction": "x", "urgency": "now"},
+            format="json",
+        )
+        self.assertEqual(response.data["model_override"], "")

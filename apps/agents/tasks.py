@@ -73,7 +73,12 @@ def run_task_run(self, task_run_id):
 
 def _run_phase(task_run, phase, worktree_path, context) -> bool:
     attempt = TaskRunStep.objects.filter(task_run=task_run, phase=phase).count() + 1
-    model = choose_model(task_run.project, phase, task_run.consecutive_verify_failures)
+    model = choose_model(
+        task_run.project,
+        phase,
+        task_run.consecutive_verify_failures,
+        model_override=task_run.model_override,
+    )
     step = TaskRunStep.objects.create(
         task_run=task_run,
         phase=phase,

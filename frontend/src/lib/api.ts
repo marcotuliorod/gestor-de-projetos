@@ -94,6 +94,8 @@ export interface TaskRun {
   urgency: TaskRunUrgency
   state: TaskRunState
   model_used: string
+  /** Modelo forçado no Composer; vazio = decidir automaticamente. */
+  model_override: string
   summary: string
   pr_url: string
   branch_name: string
@@ -227,8 +229,12 @@ export const api = {
 
   getTaskRun: (id: number | string) => request<TaskRun>(`/api/task-runs/${id}/`),
 
-  createTaskRun: (data: { project: number; instruction: string; urgency: TaskRunUrgency }) =>
-    request<TaskRun>('/api/task-runs/', { method: 'POST', body: JSON.stringify(data) }),
+  createTaskRun: (data: {
+    project: number
+    instruction: string
+    urgency: TaskRunUrgency
+    model_override?: string
+  }) => request<TaskRun>('/api/task-runs/', { method: 'POST', body: JSON.stringify(data) }),
 
   getTaskRunDiff: (id: number | string) =>
     request<{ files: DiffFile[] }>(`/api/task-runs/${id}/diff/`),
