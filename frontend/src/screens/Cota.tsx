@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type BudgetState } from '../lib/api'
+import { formatTokens } from '../lib/format'
 import './Cota.css'
-
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${Math.round(n / 1_000)}k`
-  return String(n)
-}
 
 export function Cota() {
   const [state, setState] = useState<BudgetState | null>(null)

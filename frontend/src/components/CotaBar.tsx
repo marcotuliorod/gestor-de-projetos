@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type BudgetState } from '../lib/api'
+import { api, type BudgetSummary } from '../lib/api'
 import './CotaBar.css'
 
 /** Barra de cota semanal presente em todas as telas (RF-11).
@@ -11,7 +11,7 @@ import './CotaBar.css'
  *  minuto de tela aberta.
  */
 export function CotaBar({ className = '' }: { className?: string }) {
-  const [state, setState] = useState<BudgetState | null>(null)
+  const [state, setState] = useState<BudgetSummary | null>(null)
 
   const load = useCallback(() => {
     api

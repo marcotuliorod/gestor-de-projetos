@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type BudgetState, type Project, type TaskRunUrgency } from '../lib/api'
+import { api, type BudgetSummary, type Project, type TaskRunUrgency } from '../lib/api'
 import './Composer.css'
 
 const SHORTCUTS = [
@@ -28,7 +28,7 @@ export function Composer() {
   const [instruction, setInstruction] = useState('')
   const [urgency, setUrgency] = useState<TaskRunUrgency>('now')
   const [modelOverride, setModelOverride] = useState('')
-  const [budget, setBudget] = useState<BudgetState | null>(null)
+  const [budget, setBudget] = useState<BudgetSummary | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

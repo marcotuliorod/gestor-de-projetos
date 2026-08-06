@@ -1,27 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type CiCheck, type Project, type StatusSnapshot } from '../lib/api'
+import { api, type Project, type StatusSnapshot } from '../lib/api'
+import { checkLabel, checkTone } from '../lib/format'
 import './Projeto.css'
-
-const CONCLUSION_LABEL: Record<string, string> = {
-  success: 'passou',
-  failure: 'falhou',
-  cancelled: 'cancelado',
-  skipped: 'pulado',
-  timed_out: 'estourou o tempo',
-  action_required: 'exige ação',
-  neutral: 'neutro',
-}
-
-function checkTone(check: CiCheck): 'ok' | 'fail' | 'run' {
-  if (check.status !== 'completed') return 'run'
-  return check.conclusion === 'success' ? 'ok' : 'fail'
-}
-
-function checkLabel(check: CiCheck): string {
-  if (check.status !== 'completed') return 'rodando'
-  return CONCLUSION_LABEL[check.conclusion] ?? check.conclusion
-}
 
 export function Projeto() {
   const { id } = useParams<{ id: string }>()

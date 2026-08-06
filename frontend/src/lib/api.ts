@@ -153,6 +153,12 @@ export interface BudgetState {
   weeks: BudgetWeek[]
 }
 
+/** Forma real de `GET /api/budget/?summary=1` — o backend omite
+ *  `distribution`/`weeks` de propósito (seis agregações que a barra sempre
+ *  visível não precisa recalcular a cada foco de aba). `BudgetState` sozinho
+ *  mentiria que esses campos sempre vêm preenchidos. */
+export type BudgetSummary = Omit<BudgetState, 'distribution' | 'weeks'>
+
 /** Erro de API que preserva o `detail` explicativo vindo do backend — as
  *  telas mostram esse texto em vez de uma mensagem genérica. */
 export class ApiError extends Error {
@@ -259,7 +265,7 @@ export const api = {
   getBudget: () => request<BudgetState>('/api/budget/'),
 
   /** Só o resumo, sem histórico nem distribuição — usado pela barra sempre visível. */
-  getBudgetSummary: () => request<BudgetState>('/api/budget/?summary=1'),
+  getBudgetSummary: () => request<BudgetSummary>('/api/budget/?summary=1'),
 
   updateBudgetSettings: (data: {
     quota_total_usd?: number

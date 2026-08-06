@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Project, type ProjectState, type StatusSnapshot } from '../lib/api'
+import { timeAgo } from '../lib/format'
 import './Board.css'
 
 const STATE_LABEL: Record<ProjectState, string> = {
@@ -15,16 +16,6 @@ const STATE_DOT: Record<ProjectState, string> = {
   rodando: 'var(--run)',
   em_dia: 'var(--ok)',
   parado: 'var(--text3)',
-}
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const minutes = Math.floor(diffMs / 60000)
-  if (minutes < 1) return 'agora'
-  if (minutes < 60) return `há ${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `há ${hours}h`
-  return `há ${Math.floor(hours / 24)} dias`
 }
 
 export function Board() {

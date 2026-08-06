@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, type TaskRun, type TaskRunPhase, type TaskRunStep } from '../lib/api'
+import { api, type TaskRun, type TaskRunPhase } from '../lib/api'
+import { stateLabel, stepIcon, stepMeta } from '../lib/format'
 import './Run.css'
 
 const PHASE_ORDER: TaskRunPhase[] = ['discuss', 'plan', 'execute', 'verify', 'ship']
@@ -155,51 +156,3 @@ export function Run() {
   )
 }
 
-function stateLabel(state: TaskRun['state']): string {
-  switch (state) {
-    case 'queued':
-      return 'Na fila'
-    case 'running':
-      return 'Rodando'
-    case 'needs_review':
-      return 'Precisa de revisão'
-    case 'done':
-      return 'Concluída'
-    case 'failed':
-      return 'Falhou'
-    case 'discarded':
-      return 'Descartada'
-  }
-}
-
-/** Duração, modelo e custo real da fase — em branco no que ainda não rodou. */
-function stepMeta(step: TaskRunStep | undefined): string {
-  if (!step) return ''
-  const parts: string[] = []
-
-  if (step.started_at && step.finished_at) {
-    const seconds = Math.max(
-      0,
-      Math.round((new Date(step.finished_at).getTime() - new Date(step.started_at).getTime()) / 1000),
-    )
-    parts.push(seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`)
-  }
-  if (step.model_used) parts.push(step.model_used)
-  // Modo fake não tem custo; mostrar "$0.00" ali seria mentira.
-  if (step.cost_usd != null) parts.push(`$${Number(step.cost_usd).toFixed(2)}`)
-
-  return parts.join(' · ')
-}
-
-function stepIcon(status: string): string {
-  switch (status) {
-    case 'done':
-      return '✓'
-    case 'failed':
-      return '✕'
-    case 'running':
-      return '…'
-    default:
-      return '○'
-  }
-}
