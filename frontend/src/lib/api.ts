@@ -143,6 +143,8 @@ export interface BudgetState {
   /** Faixa em que a fila noturna corta por peso (RF-13). */
   prioritizing_by_weight: boolean
   high_priority_weight: number
+  /** Tokens de prompt reaproveitados do cache na janela (RF-22). */
+  cache_tokens: { read: number; written: number }
   personal_reserve_pct: number
   pause_threshold_pct: number
   window_start: string

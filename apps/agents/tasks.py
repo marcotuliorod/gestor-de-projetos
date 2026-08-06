@@ -113,8 +113,19 @@ def _run_phase(task_run, phase, worktree_path, context) -> bool:
     step.status = TaskRunStep.Status.DONE if result.ok else TaskRunStep.Status.FAILED
     step.detail = result.detail[:4000]
     step.cost_usd = result.cost_usd
+    step.cache_read_tokens = result.cache_read_tokens
+    step.cache_write_tokens = result.cache_write_tokens
     step.finished_at = timezone.now()
-    step.save(update_fields=["status", "detail", "cost_usd", "finished_at"])
+    step.save(
+        update_fields=[
+            "status",
+            "detail",
+            "cost_usd",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "finished_at",
+        ]
+    )
     _publish(task_run.id, step.id)
     context.update(result.context_updates)
 

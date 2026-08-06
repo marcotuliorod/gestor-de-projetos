@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { api, type BudgetState } from '../lib/api'
 import './Cota.css'
 
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`
+  return String(n)
+}
+
 export function Cota() {
   const [state, setState] = useState<BudgetState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -148,6 +154,22 @@ export function Cota() {
           </div>
           )
         })}
+      </div>
+
+      <div className="cota-section-title">Cache de prompt</div>
+      <div className="cota-cache">
+        {state.cache_tokens.read > 0 ? (
+          <>
+            <span className="cota-cache-value">{formatTokens(state.cache_tokens.read)}</span>
+            <span className="cota-cache-label">
+              tokens reaproveitados do cache nesta janela, em vez de cobrados como entrada nova
+            </span>
+          </>
+        ) : (
+          <span className="cota-cache-label">
+            Nenhum token veio do cache nesta janela — ou nada rodou ainda, ou o cache não está pegando.
+          </span>
+        )}
       </div>
 
       <div className="cota-section-title">Últimas semanas</div>

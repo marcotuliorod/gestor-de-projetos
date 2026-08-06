@@ -99,6 +99,11 @@ class TaskRunStep(models.Model):
     # Custo real da chamada (ResultMessage.total_cost_usd) — None em modo
     # fake. Base do Token Budget Scheduler (RF-11..13, apps.budget).
     cost_usd = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
+    # Tokens de prompt reaproveitados do cache e gravados nele (RF-22). Zero
+    # em modo fake e quando o cache não pegou — é o número que prova (ou
+    # desmente) que a otimização está valendo.
+    cache_read_tokens = models.PositiveIntegerField(default=0)
+    cache_write_tokens = models.PositiveIntegerField(default=0)
     # Resumo textual curto do que a fase fez/encontrou — nunca o diff.
     detail = models.TextField(blank=True)
     started_at = models.DateTimeField(null=True, blank=True)

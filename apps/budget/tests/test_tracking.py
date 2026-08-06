@@ -159,3 +159,37 @@ class ProjectionTests(SimpleTestCase):
         self.assertEqual(tracking._period_of_day(9), "de manhã")
         self.assertEqual(tracking._period_of_day(15), "à tarde")
         self.assertEqual(tracking._period_of_day(21), "à noite")
+
+
+class CacheTokensTests(TestCase):
+    """RF-22: a economia de cache precisa ser visível para o requisito ser
+    verificável, e não apenas alegado."""
+
+    def setUp(self):
+        self.project = Project.objects.create(name="p")
+        self.task_run = TaskRun.objects.create(project=self.project, instruction="x")
+        self.start = datetime(2026, 8, 3, 9, 0, tzinfo=dt_timezone.utc)
+        self.end = self.start + timedelta(days=7)
+
+    def _step(self, read, written, when=None):
+        step = TaskRunStep.objects.create(
+            task_run=self.task_run,
+            phase=TaskRunStep.Phase.EXECUTE,
+            cache_read_tokens=read,
+            cache_write_tokens=written,
+        )
+        TaskRunStep.objects.filter(pk=step.pk).update(created_at=when or (self.start + timedelta(hours=2)))
+        return step
+
+    def test_sums_within_the_window(self):
+        self._step(1000, 200)
+        self._step(500, 100)
+        self.assertEqual(tracking.cache_tokens(self.start, self.end), {"read": 1500, "written": 300})
+
+    def test_ignores_steps_outside_the_window(self):
+        self._step(1000, 200)
+        self._step(9999, 9999, when=self.start - timedelta(days=1))
+        self.assertEqual(tracking.cache_tokens(self.start, self.end)["read"], 1000)
+
+    def test_no_steps_is_zero_not_none(self):
+        self.assertEqual(tracking.cache_tokens(self.start, self.end), {"read": 0, "written": 0})

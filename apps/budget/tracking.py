@@ -49,6 +49,18 @@ def usage_usd(start, end) -> Decimal:
     return total or Decimal("0")
 
 
+def cache_tokens(start, end) -> dict:
+    """Tokens de prompt lidos e gravados no cache na janela (RF-22).
+
+    `read` é a economia de fato: tokens que entraram no contexto sem serem
+    cobrados como entrada nova. Zero significa que o cache não está pegando.
+    """
+    row = TaskRunStep.objects.filter(created_at__gte=start, created_at__lt=end).aggregate(
+        read=Sum("cache_read_tokens"), written=Sum("cache_write_tokens")
+    )
+    return {"read": row["read"] or 0, "written": row["written"] or 0}
+
+
 def usage_by_project(start, end) -> dict:
     """Mapa project_id -> custo (USD) na janela, para a distribuição por
     projeto da tela de Cota."""
@@ -177,6 +189,7 @@ def budget_state() -> dict:
         # isso para marcar quais projetos passam.
         "prioritizing_by_weight": color == "atencao",
         "high_priority_weight": HIGH_PRIORITY_WEIGHT,
+        "cache_tokens": cache_tokens(start, end),
         "personal_reserve_pct": settings_obj.personal_reserve_pct,
         "pause_threshold_pct": settings_obj.pause_threshold_pct,
         "window_start": start.isoformat(),

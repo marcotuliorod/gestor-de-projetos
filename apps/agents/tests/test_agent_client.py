@@ -26,10 +26,55 @@ class BuildPromptTests(SimpleTestCase):
         )
         self.assertIn("entendi tudo", prompt)
 
-    def test_verify_includes_project_commands(self):
+    def test_verify_no_longer_repeats_the_commands(self):
+        """RF-22: os comandos saíram do prompt por fase para o contexto
+        estável do system prompt. Repeti-los aqui quebraria o prefixo
+        cacheável sem acrescentar informação."""
         prompt = agent_client._build_prompt(TaskRunStep.Phase.VERIFY, _fake_project(), "faz algo", {})
-        self.assertIn("pytest", prompt)
-        self.assertIn("ruff check .", prompt)
+        self.assertNotIn("pytest", prompt)
+        self.assertIn("contexto do projeto", prompt)
+
+
+class StableProjectContextTests(SimpleTestCase):
+    """RF-22: o prefixo só serve para cache se for idêntico entre fases e
+    entre execuções — qualquer coisa volátil aqui invalida tudo."""
+
+    def test_carries_stack_and_commands(self):
+        contexto = agent_client.stable_project_context(_fake_project())
+        self.assertIn("pytest", contexto)
+        self.assertIn("ruff check .", contexto)
+
+    def test_states_the_invariant_rules(self):
+        contexto = agent_client.stable_project_context(_fake_project())
+        self.assertIn("nunca", contexto.lower())
+
+    def test_identical_across_phases(self):
+        project = _fake_project()
+        self.assertEqual(
+            agent_client.stable_project_context(project),
+            agent_client.stable_project_context(project),
+        )
+
+    def test_omits_commands_that_are_not_configured(self):
+        project = _fake_project()
+        project.lint_command = ""
+        self.assertNotIn("Lint:", agent_client.stable_project_context(project))
+
+
+class CacheTokenExtractionTests(SimpleTestCase):
+    """Zero é um resultado significativo: é como se descobre que o CLI
+    ignorou a opção de cache em silêncio."""
+
+    def test_reads_the_api_field_names(self):
+        usage = {"cache_read_input_tokens": 1200, "cache_creation_input_tokens": 300}
+        self.assertEqual(agent_client._cache_tokens(usage), (1200, 300))
+
+    def test_missing_usage_is_zero(self):
+        self.assertEqual(agent_client._cache_tokens(None), (0, 0))
+        self.assertEqual(agent_client._cache_tokens({}), (0, 0))
+
+    def test_garbage_values_do_not_raise(self):
+        self.assertEqual(agent_client._cache_tokens({"cache_read_input_tokens": "muitos"}), (0, 0))
 
 
 @override_settings(AGENTS_FAKE_MODE=False)
