@@ -3,6 +3,7 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
+from apps.core.notifications import send_telegram_message
 from apps.status.github_client import get_installation_client
 from apps.status.models import ProjectState, StatusSnapshot
 from apps.status.tasks import collect_status
@@ -65,6 +66,7 @@ def run_task_run(self, task_run_id):
     task_run.summary = context.get("summary", "Alterações prontas para revisão.")[:280]
     task_run.state = TaskRun.State.NEEDS_REVIEW
     task_run.save(update_fields=["summary", "state", "updated_at"])
+    send_telegram_message(f"🔍 {project.name}: pronto para revisão\n{task_run.instruction[:200]}")
     collect_status.delay(project.id)
     return task_run.id
 
@@ -134,6 +136,7 @@ def _fail(task_run, message: str) -> None:
     task_run.state = TaskRun.State.FAILED
     task_run.summary = message[:280]
     task_run.save(update_fields=["state", "summary", "updated_at"])
+    send_telegram_message(f"❌ {task_run.project.name}: tarefa falhou\n{message[:200]}")
 
 
 def _flip_board_to_rodando(project) -> None:
@@ -171,8 +174,10 @@ def dispatch_nightly_queue():
     """
     from apps.budget.tracking import budget_state
 
-    if budget_state()["should_pause_nightly"]:
+    state = budget_state()
+    if state["should_pause_nightly"]:
         logger.info("dispatch_nightly_queue: pausado — orçamento semanal no limiar")
+        send_telegram_message(f"⏸️ {state['warn_text']}")
         return
 
     runs = TaskRun.objects.filter(state=TaskRun.State.QUEUED, urgency=TaskRun.Urgency.NIGHTLY)

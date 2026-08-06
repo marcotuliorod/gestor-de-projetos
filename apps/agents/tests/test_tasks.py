@@ -63,6 +63,10 @@ class RunTaskRunTests(TestCase):
         collect_patcher.start()
         self.addCleanup(collect_patcher.stop)
 
+        notify_patcher = patch("apps.agents.tasks.send_telegram_message")
+        self.mock_notify = notify_patcher.start()
+        self.addCleanup(notify_patcher.stop)
+
     def test_happy_path_reaches_needs_review(self):
         task_run = TaskRun.objects.create(project=self.project, instruction="Adiciona um comentário")
 
@@ -79,6 +83,8 @@ class RunTaskRunTests(TestCase):
         self.assertTrue(
             StatusSnapshot.objects.filter(project=self.project, state=ProjectState.RODANDO).exists()
         )
+        self.mock_notify.assert_called_once()
+        self.assertIn("pronto para revisão", self.mock_notify.call_args[0][0])
 
     def test_missing_task_run_returns_none_without_raising(self):
         result = run_task_run(999999)
@@ -92,6 +98,8 @@ class RunTaskRunTests(TestCase):
         task_run.refresh_from_db()
         self.assertEqual(task_run.state, TaskRun.State.FAILED)
         self.assertTrue(task_run.summary)
+        self.mock_notify.assert_called_once()
+        self.assertIn("tarefa falhou", self.mock_notify.call_args[0][0])
 
     def test_phase_exception_fails_gracefully(self):
         task_run = TaskRun.objects.create(project=self.project, instruction="teste")
@@ -102,15 +110,20 @@ class RunTaskRunTests(TestCase):
         self.assertEqual(task_run.state, TaskRun.State.FAILED)
         failed_steps = TaskRunStep.objects.filter(task_run=task_run, status=TaskRunStep.Status.FAILED)
         self.assertTrue(failed_steps.exists())
+        self.mock_notify.assert_called_once()
 
 
 class DispatchNightlyQueueTests(TestCase):
     def setUp(self):
         self.project = Project.objects.create(name="teste")
 
+    @patch("apps.agents.tasks.send_telegram_message")
     @patch("apps.agents.tasks.run_task_run.delay")
-    @patch("apps.budget.tracking.budget_state", return_value={"should_pause_nightly": True})
-    def test_paused_when_budget_over_threshold(self, mock_state, mock_delay):
+    @patch(
+        "apps.budget.tracking.budget_state",
+        return_value={"should_pause_nightly": True, "warn_text": "Fila noturna pausada."},
+    )
+    def test_paused_when_budget_over_threshold(self, mock_state, mock_delay, mock_notify):
         from apps.agents.tasks import dispatch_nightly_queue
 
         TaskRun.objects.create(
@@ -118,10 +131,13 @@ class DispatchNightlyQueueTests(TestCase):
         )
         dispatch_nightly_queue()
         mock_delay.assert_not_called()
+        mock_notify.assert_called_once()
+        self.assertIn("Fila noturna pausada.", mock_notify.call_args[0][0])
 
+    @patch("apps.agents.tasks.send_telegram_message")
     @patch("apps.agents.tasks.run_task_run.delay")
-    @patch("apps.budget.tracking.budget_state", return_value={"should_pause_nightly": False})
-    def test_dispatches_when_budget_ok(self, mock_state, mock_delay):
+    @patch("apps.budget.tracking.budget_state", return_value={"should_pause_nightly": False, "warn_text": ""})
+    def test_dispatches_when_budget_ok(self, mock_state, mock_delay, mock_notify):
         from apps.agents.tasks import dispatch_nightly_queue
 
         task_run = TaskRun.objects.create(
@@ -129,3 +145,4 @@ class DispatchNightlyQueueTests(TestCase):
         )
         dispatch_nightly_queue()
         mock_delay.assert_called_once_with(task_run.id)
+        mock_notify.assert_not_called()

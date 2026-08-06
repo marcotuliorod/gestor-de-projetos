@@ -123,3 +123,9 @@ ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 # Enquanto o spike do SDK não roda, agent_client.run_phase() opera em modo
 # determinístico (sem chamar nenhuma API externa) — default True.
 AGENTS_FAKE_MODE = env.bool("AGENTS_FAKE_MODE", default=True)
+
+# --- Notificações Telegram (RF-14) ---------------------------------------
+# Sem token/chat_id configurados, apps.core.notifications.send_telegram_message
+# vira no-op silencioso — mesmo padrão de "degrada graciosamente".
+TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_CHAT_ID = env("TELEGRAM_CHAT_ID", default="")

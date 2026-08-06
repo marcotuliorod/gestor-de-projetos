@@ -53,9 +53,10 @@ class TaskRunViewSetTests(APITestCase):
         response = self.client.post(f"/api/task-runs/{task_run.id}/approve/")
         self.assertEqual(response.status_code, 409)
 
+    @patch("apps.agents.views.send_telegram_message")
     @patch("apps.agents.views.get_installation_client")
     @patch("apps.agents.views.workspace.push_branch")
-    def test_approve_pushes_and_opens_pr(self, mock_push, mock_gh_client):
+    def test_approve_pushes_and_opens_pr(self, mock_push, mock_gh_client, mock_notify):
         pr = MagicMock()
         pr.html_url = "https://github.com/ju/teste/pull/1"
         mock_gh_client.return_value.get_repo.return_value.create_pull.return_value = pr
@@ -74,6 +75,8 @@ class TaskRunViewSetTests(APITestCase):
         task_run.refresh_from_db()
         self.assertEqual(task_run.state, TaskRun.State.DONE)
         self.assertEqual(task_run.pr_url, pr.html_url)
+        mock_notify.assert_called_once()
+        self.assertIn(pr.html_url, mock_notify.call_args[0][0])
 
     @patch("apps.agents.views.run_task_run.delay")
     def test_request_changes_requeues(self, mock_delay):

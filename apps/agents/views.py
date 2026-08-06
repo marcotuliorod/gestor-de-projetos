@@ -6,6 +6,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.notifications import send_telegram_message
 from apps.status.github_client import get_installation_client
 
 from . import workspace
@@ -68,6 +69,7 @@ class TaskRunViewSet(viewsets.ModelViewSet):
         task_run.pr_url = pr.html_url
         task_run.state = TaskRun.State.DONE
         task_run.save(update_fields=["pr_url", "state", "updated_at"])
+        send_telegram_message(f"🔀 {task_run.project.name}: PR aberto\n{pr.html_url}")
         return Response(TaskRunSerializer(task_run).data)
 
     @action(detail=True, methods=["post"], url_path="request-changes")
