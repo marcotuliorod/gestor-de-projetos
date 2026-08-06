@@ -78,6 +78,7 @@ def _run_phase(task_run, phase, worktree_path, context) -> bool:
         phase,
         task_run.consecutive_verify_failures,
         model_override=task_run.model_override,
+        instruction=task_run.instruction,
     )
     step = TaskRunStep.objects.create(
         task_run=task_run,
