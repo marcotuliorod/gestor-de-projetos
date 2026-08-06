@@ -112,6 +112,12 @@ GITHUB_APP_ID = env("GITHUB_APP_ID", default="")
 GITHUB_APP_PRIVATE_KEY_B64 = env("GITHUB_APP_PRIVATE_KEY_B64", default="")
 GITHUB_APP_INSTALLATION_ID = env("GITHUB_APP_INSTALLATION_ID", default="")
 GITHUB_WEBHOOK_SECRET = env("GITHUB_WEBHOOK_SECRET", default="")
+# Token pessoal usado *exclusivamente* para criar repositório (RF-02).
+# Uma GitHub App não consegue criar repositório em conta pessoal: o token
+# de instalação não serve para `POST /user/repos`, e a permissão
+# `administration` só existe para organizações. Todo o resto do sistema
+# continua autenticando pela App.
+GITHUB_PAT = env("GITHUB_PAT", default="")
 
 # --- Execução de agentes (RF-07..10, RF-17..20) --------------------------
 # Diretório (volume compartilhado web+worker) onde mirrors/worktrees de

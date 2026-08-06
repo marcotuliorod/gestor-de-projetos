@@ -244,3 +244,38 @@
   color: var(--text3);
   line-height: 1.45;
 }
+
+.novo-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.novo-path {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 150ms ease-out;
+}
+.novo-path:hover {
+  background: var(--hover);
+}
+
+.novo-path-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.novo-path-hint {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text3);
+}

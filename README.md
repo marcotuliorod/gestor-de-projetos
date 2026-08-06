@@ -205,6 +205,22 @@ Docker por tarefa (usamos `git worktree` num volume compartilhado) ·
 suporte offline de dados no PWA (o app é um painel ao vivo — offline
 mostraria estado desatualizado) · deploy VPS/Tailscale/Caddy.
 
+## Criar projeto do zero (RF-02)
+
+Este é o único fluxo que **não** usa a GitHub App: uma App não consegue criar
+repositório em conta pessoal — o token de instalação não vale para
+`POST /user/repos`, e a permissão `administration` só existe para
+organizações. Por isso a criação usa um token pessoal (`GITHUB_PAT` no
+`.env`), e só ela; todo o resto continua pela App.
+
+Sem `GITHUB_PAT` preenchido, o sistema inteiro funciona normalmente e apenas
+esse fluxo responde com um aviso explicando o que falta.
+
+O repositório nasce com commit inicial (`auto_init`), licença e `.gitignore`
+da stack; o agente monta estrutura, README, lint e CI na primeira tarefa. Essa
+tarefa segue o caminho normal de revisão — nem um repositório recém-criado
+escapa da regra de nunca escrever direto na branch padrão (RNF-01/RF-10).
+
 ## Desvios em relação ao PRD
 
 Três pontos onde o implementado diverge do que [docs/PRD.md](docs/PRD.md)

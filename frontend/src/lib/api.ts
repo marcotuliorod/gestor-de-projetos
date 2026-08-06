@@ -142,13 +142,32 @@ export interface BudgetState {
   weeks: BudgetWeek[]
 }
 
+/** Erro de API que preserva o `detail` explicativo vindo do backend — as
+ *  telas mostram esse texto em vez de uma mensagem genérica. */
+export class ApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
     ...init,
   })
   if (!res.ok) {
-    throw new Error(`${init?.method ?? 'GET'} ${path} failed: ${res.status}`)
+    let detail = ''
+    try {
+      const body = (await res.json()) as { detail?: string }
+      detail = body?.detail ?? ''
+    } catch {
+      // resposta sem corpo JSON — segue com a mensagem genérica
+    }
+    throw new ApiError(res.status, detail || `${init?.method ?? 'GET'} ${path} failed: ${res.status}`)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
@@ -179,6 +198,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  createFromScratch: (data: { name: string; description: string; stack: string; private: boolean }) =>
+    request<{ project: Project; task_run_id: number; repo_url: string }>(
+      '/api/projects/create-from-scratch/',
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
 
   getBoard: () => request<StatusSnapshot[]>('/api/board/'),
 

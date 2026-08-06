@@ -9,6 +9,7 @@ import base64
 import logging
 
 import requests
+from django.conf import settings
 
 from apps.status.github_client import get_installation_token
 
@@ -16,6 +17,77 @@ logger = logging.getLogger(__name__)
 
 GITHUB_API = "https://api.github.com"
 TIMEOUT = 20
+
+# Stack detectada/escolhida -> template de .gitignore do GitHub.
+_GITIGNORE_TEMPLATES = {
+    "node": "Node",
+    "python": "Python",
+    "go": "Go",
+    "rust": "Rust",
+    "php": "Composer",
+    "ruby": "Ruby",
+    "dart": "Dart",
+}
+
+
+class RepoCreationUnavailable(RuntimeError):
+    """GITHUB_PAT não configurado — o fluxo de criar do zero não roda."""
+
+
+def gitignore_template_for(stack: str) -> str:
+    """Template de .gitignore adequado à stack, ou vazio se não reconhecer
+    (o GitHub aceita a criação sem template)."""
+    first_word = (stack or "").strip().lower().split()[0] if stack.strip() else ""
+    return _GITIGNORE_TEMPLATES.get(first_word, "")
+
+
+def create_repo(name: str, description: str = "", private: bool = True, stack: str = "") -> dict:
+    """Cria um repositório na conta do dono do PAT (RF-02).
+
+    `auto_init=True` não é opcional: um repositório vazio não tem branch
+    padrão, e `workspace.create_worktree` parte de `origin/<base_branch>`.
+    Sem o commit inicial, a tarefa de scaffold falharia na preparação do
+    worktree.
+    """
+    token = getattr(settings, "GITHUB_PAT", "")
+    if not token:
+        raise RepoCreationUnavailable(
+            "Criar projeto do zero exige um token pessoal do GitHub (GITHUB_PAT no .env) — "
+            "a App não tem permissão para criar repositórios."
+        )
+
+    payload = {
+        "name": name,
+        "description": description,
+        "private": private,
+        "auto_init": True,
+    }
+    template = gitignore_template_for(stack)
+    if template:
+        payload["gitignore_template"] = template
+
+    response = requests.post(
+        f"{GITHUB_API}/user/repos",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+        },
+        json=payload,
+        timeout=TIMEOUT,
+    )
+    if response.status_code == 422:
+        raise ValueError(f"O GitHub recusou a criação: {response.json().get('message', 'nome já em uso?')}")
+    response.raise_for_status()
+
+    repo = response.json()
+    return {
+        "full_name": repo["full_name"],
+        "owner": repo["owner"]["login"],
+        "name": repo["name"],
+        "html_url": repo["html_url"],
+        "private": repo["private"],
+        "default_branch": repo.get("default_branch") or "main",
+    }
 
 
 def _headers() -> dict:
