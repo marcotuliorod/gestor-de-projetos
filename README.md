@@ -1,8 +1,10 @@
 # Gestor de Projetos
 
 Painel para gestão de múltiplos projetos de software, leitura de status real
-via git/GitHub e orquestração de agentes Claude Code. Ver PRD para o escopo
-completo.
+via git/GitHub e orquestração de agentes Claude Code. Ver [docs/PRD.md](docs/PRD.md)
+para o escopo completo (22 requisitos funcionais, 6 não-funcionais, 6 fases) —
+o que já está implementado e onde a implementação diverge do PRD está resumido
+abaixo e detalhado em "Desvios em relação ao PRD".
 
 **Estado atual:** Fase 0 (infra local) + backend/API da Fase 1 + frontend React
 (Board, Config, Projeto) implementando o design de referência
@@ -194,15 +196,40 @@ print(urllib.request.urlopen(req).status)
 
 ## Fora desta fase
 
-Headroom proxy · Caveman · detecção automática de plano/limite via conta
+Headroom proxy (RF-15/RNF-02) · Caveman (RF-16) · cache de prompt via
+`CLAUDE.md` enxuto (RF-22) · criação de projeto do zero com scaffold
+(RF-02) · detecção automática de stack e seleção de repo via App (RF-01 —
+hoje só URL manual) · detecção automática de plano/limite via conta
 Anthropic (não há API confiável para isso) · isolamento por container
 Docker por tarefa (usamos `git worktree` num volume compartilhado) ·
 suporte offline de dados no PWA (o app é um painel ao vivo — offline
 mostraria estado desatualizado) · deploy VPS/Tailscale/Caddy.
 
-**Nota de arquitetura:** o PRD original previa disparar o GSD Core
+## Desvios em relação ao PRD
+
+Três pontos onde o implementado diverge do que [docs/PRD.md](docs/PRD.md)
+especifica — decisões deliberadas, não dívida acidental:
+
+**1. GSD Core abandonado (RF-17).** O PRD previa disparar o GSD Core
 (`@opengsd/gsd-core`) via subprocess com comandos `/gsd-*`. Pesquisa contra a
 documentação oficial do Claude Code confirmou que slash commands não
 funcionam em modo headless (`-p`) — premissa inválida para um worker Celery
 sem humano no teclado. A orquestração aqui autora seus próprios prompts por
 fase via Agent SDK em vez de depender do GSD Core para execução headless.
+
+**2. Paralelismo é entre tarefas, não "ondas" dentro do Execute (RF-21).** O
+PRD descreve subtarefas independentes rodando em paralelo dentro da fase
+Execute. O implementado é concorrência entre `TaskRun`s distintos (pool
+Celery + lock por projeto) — mais simples e suficiente para uso pessoal, mas
+não é a mesma coisa.
+
+**3. Ship não é uma fase do loop.** O loop automático vai até Verify; o push
+e a abertura do PR só acontecem no `/approve/`, após revisão humana. Isso é
+mais restritivo que o PRD (que descreve 5 fases contínuas) e existe para
+garantir RNF-01/RF-10.
+
+**Consequência a registrar:** as três alavancas de eficiência de token do
+PRD (RF-15 Headroom, RF-16 Caveman, RF-22 cache de prompt) estão todas
+ausentes. O controle de custo hoje é **reativo** — o Token Budget Scheduler
+(RF-11..13) mede o custo real de cada `TaskRunStep` e pausa a fila noturna
+no limiar, mas nada reduz o consumo por tarefa.
