@@ -228,6 +228,11 @@ def _run_phase_real(phase, model, project, instruction, worktree_path, context) 
         # `exclude_dynamic_sections` tira diretório/git status do prefixo;
         # CLIs antigos ignoram a opção em silêncio, por isso medimos o
         # resultado em vez de presumir (ver cache_read_tokens).
+        #
+        # Medido contra a API real com o CLI 2.1.222: a 1ª fase gravou 25.354
+        # tokens no cache e a 2ª leu 22.810 deles, com o custo caindo de
+        # $0.0328 para $0.0065. Se esse número voltar a zero em produção, é
+        # sinal de que a opção parou de valer.
         system_prompt={
             "type": "preset",
             "preset": "claude_code",

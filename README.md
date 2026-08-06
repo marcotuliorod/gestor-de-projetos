@@ -66,6 +66,14 @@ por padrão a cota é `$0` (sem teto, nada pausa). O uso é sempre computado
 sob demanda a partir de `TaskRunStep.cost_usd` — não há job de "virar a
 semana" nem contador que possa dessincronizar.
 
+**Cache de prompt (RF-22):** o contexto do projeto (stack, comandos, regras
+invariantes) vai no *system prompt* como prefixo estável, e não nas mensagens
+de cada fase — é isso que o cache consegue reaproveitar entre fases e entre
+execuções do mesmo projeto. Medido contra a API real: a primeira fase gravou
+25k tokens no cache e a segunda leu 23k deles, com o custo caindo de $0.033
+para $0.007. A tela de Cota mostra quanto veio do cache na janela; **zero ali
+significa que o cache parou de pegar**, não que falta dado.
+
 O consumo passa por três faixas, e o **peso de prioridade de cada projeto**
 (RF-13) muda de comportamento conforme elas:
 
