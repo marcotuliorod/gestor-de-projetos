@@ -66,6 +66,19 @@ por padrão a cota é `$0` (sem teto, nada pausa). O uso é sempre computado
 sob demanda a partir de `TaskRunStep.cost_usd` — não há job de "virar a
 semana" nem contador que possa dessincronizar.
 
+O consumo passa por três faixas, e o **peso de prioridade de cada projeto**
+(RF-13) muda de comportamento conforme elas:
+
+| Faixa | Consumo | Fila noturna |
+|---|---|---|
+| Normal | abaixo de 70% | roda tudo, do maior peso para o menor |
+| Atenção | 70% até o limiar de pausa | só projetos de peso ≥ 4; os demais seguem `queued` |
+| Crítica | limiar de pausa (padrão 85%) | pausada por inteiro; só urgência "Agora" roda |
+
+Nada é descartado no corte por peso — as tarefas retidas voltam a concorrer
+na noite seguinte ou depois do reset, e você recebe um aviso no Telegram
+dizendo quantas rodaram e quantas ficaram.
+
 **Execução de agentes:** `AGENTS_FAKE_MODE=True` (padrão) faz o agente
 escrever uma mudança determinística e trivial no worktree em vez de chamar
 uma API real. Para rodar com `AGENTS_FAKE_MODE=False` (integração real, já
