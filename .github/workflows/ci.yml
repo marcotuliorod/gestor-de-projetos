@@ -9,87 +9,60 @@ on:
   # Com isto dá para rodar o CI sob demanda em qualquer commit.
   workflow_dispatch:
 
+# Cada push novo cancela o run anterior ainda em andamento da mesma branch —
+# evita empilhar runs que já nascem obsoletos quando vários commits saem em
+# sequência rápida (visto nesta sessão).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: gestor
-          POSTGRES_USER: gestor
-          POSTGRES_PASSWORD: gestor
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
-      # Necessário desde o RF-21: workspace._project_git_lock usa um lock
-      # Redis para serializar as operações git de um mesmo projeto. É
-      # mecanismo de correção (protege o mirror compartilhado), então não
-      # degrada silenciosamente quando falta Redis — é o CI que precisa
-      # espelhar o docker-compose.
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      DJANGO_SECRET_KEY: ci-test-secret-key
-      DEBUG: "True"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
-      DATABASE_URL: postgres://gestor:gestor@localhost:5432/gestor
-      REDIS_URL: redis://localhost:6379/0
-      # Nenhum teste faz chamada real a GitHub/Anthropic (tudo mockado) —
-      # estes valores só precisam existir para django-environ não reclamar.
-      GITHUB_APP_ID: "0"
-      GITHUB_APP_PRIVATE_KEY_B64: ""
-      GITHUB_APP_INSTALLATION_ID: "0"
-      GITHUB_WEBHOOK_SECRET: ci-test-webhook-secret
-      ANTHROPIC_API_KEY: ""
-      AGENTS_FAKE_MODE: "True"
-      AGENTS_REPO_ROOT: /tmp/agent-repos-ci
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
+      # Roda na mesma imagem de produção (Dockerfile), não em ubuntu+pip cru.
+      # As duas únicas quebras reais do CI nesta sessão foram divergência de
+      # ambiente: um lock que precisa de Redis e testes que exigem identidade
+      # git — nenhuma delas teria aparecido rodando pip install direto no
+      # runner. Isso também valida o Dockerfile e o .env.example de quebra:
+      # uma dependência de sistema removida, ou um env() novo sem entrada no
+      # .env.example, vira falha de CI em vez de surpresa em produção.
+      - run: cp .env.example .env
 
-      - run: pip install -r requirements.txt
+      - name: Build da imagem web
+        run: docker compose build web
 
-      - run: python manage.py check
+      - name: Checagens do Django
+        run: |
+          docker compose run --rm web python manage.py check
+          docker compose run --rm web python manage.py makemigrations --check --dry-run
 
-      - run: python manage.py test
+      - name: Suíte de testes
+        run: docker compose run --rm web python manage.py test
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
+
+      - run: npm test -- --run
 
       - run: npm run lint
 
