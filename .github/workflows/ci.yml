@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Gatilho manual: durante uma indisponibilidade do GitHub Actions, os
+  # pushes não chegam a criar run nenhum, e depois não há o que reexecutar.
+  # Com isto dá para rodar o CI sob demanda em qualquer commit.
+  workflow_dispatch:
 
 jobs:
   backend:
