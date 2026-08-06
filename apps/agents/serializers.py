@@ -6,7 +6,19 @@ from .models import TaskRun, TaskRunStep
 class TaskRunStepSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskRunStep
-        fields = ["id", "phase", "attempt", "status", "model_used", "detail", "started_at", "finished_at"]
+        fields = [
+            "id",
+            "phase",
+            "attempt",
+            "status",
+            "model_used",
+            # Mesmo custo que alimenta o Token Budget Scheduler — exibido por
+            # fase na tela de Run (RF-08). None em modo fake.
+            "cost_usd",
+            "detail",
+            "started_at",
+            "finished_at",
+        ]
 
 
 class TaskRunSerializer(serializers.ModelSerializer):

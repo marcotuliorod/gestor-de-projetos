@@ -79,6 +79,8 @@ export interface TaskRunStep {
   attempt: number
   status: TaskRunStepStatus
   model_used: string
+  /** Custo real da fase; null em modo fake ou antes de terminar. */
+  cost_usd: string | number | null
   detail: string
   started_at: string | null
   finished_at: string | null

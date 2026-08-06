@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, type TaskRun, type TaskRunPhase } from '../lib/api'
+import { api, type TaskRun, type TaskRunPhase, type TaskRunStep } from '../lib/api'
 import './Run.css'
 
 const PHASE_ORDER: TaskRunPhase[] = ['discuss', 'plan', 'execute', 'verify', 'ship']
@@ -17,6 +17,10 @@ export function Run() {
   const navigate = useNavigate()
   const [run, setRun] = useState<TaskRun | null>(null)
   const [loading, setLoading] = useState(true)
+  // Um passo aberto por vez; null = todos fechados. O passo em execução abre
+  // sozinho (ver efeito abaixo) porque é o que a pessoa veio acompanhar.
+  const [openPhase, setOpenPhase] = useState<TaskRunPhase | null>(null)
+  const [touchedByUser, setTouchedByUser] = useState(false)
   const esRef = useRef<EventSource | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stateRef = useRef<TaskRun['state'] | null>(null)
@@ -58,6 +62,19 @@ export function Run() {
     }
   }, [id, load])
 
+  // Segue o passo em execução enquanto a pessoa não escolher um manualmente —
+  // depois disso, respeita a escolha dela e para de mexer.
+  useEffect(() => {
+    if (touchedByUser || !run) return
+    const running = run.steps.find((s) => s.status === 'running')
+    if (running) setOpenPhase(running.phase)
+  }, [run, touchedByUser])
+
+  const togglePhase = (phase: TaskRunPhase, expanded: boolean) => {
+    setTouchedByUser(true)
+    setOpenPhase(expanded ? null : phase)
+  }
+
   const retry = async () => {
     if (!id) return
     await api.retryTaskRun(id)
@@ -86,6 +103,8 @@ export function Run() {
           const step = stepsByPhase.get(phase)
           const shipDone = phase === 'ship' && run.state === 'done'
           const status = step?.status ?? (shipDone ? 'done' : 'pending')
+          const expandable = Boolean(step?.detail)
+          const expanded = expandable && openPhase === phase
           return (
             <div key={phase} className="run-step">
               <div className="run-step-rail">
@@ -93,8 +112,20 @@ export function Run() {
                 <span className="run-step-line" />
               </div>
               <div className="run-step-body">
-                <div className="run-step-label">{PHASE_LABEL[phase]}</div>
-                {step?.detail && <div className="run-step-detail">{step.detail}</div>}
+                <button
+                  type="button"
+                  className="run-step-header"
+                  disabled={!expandable}
+                  aria-expanded={expandable ? expanded : undefined}
+                  onClick={() => togglePhase(phase, expanded)}
+                >
+                  <span className="run-step-label">{PHASE_LABEL[phase]}</span>
+                  <span className="run-step-meta">
+                    {stepMeta(step)}
+                    {expandable && <span className="run-step-caret">{expanded ? '▾' : '▸'}</span>}
+                  </span>
+                </button>
+                {expanded && <div className="run-step-detail">{step?.detail}</div>}
               </div>
             </div>
           )
@@ -139,6 +170,25 @@ function stateLabel(state: TaskRun['state']): string {
     case 'discarded':
       return 'Descartada'
   }
+}
+
+/** Duração, modelo e custo real da fase — em branco no que ainda não rodou. */
+function stepMeta(step: TaskRunStep | undefined): string {
+  if (!step) return ''
+  const parts: string[] = []
+
+  if (step.started_at && step.finished_at) {
+    const seconds = Math.max(
+      0,
+      Math.round((new Date(step.finished_at).getTime() - new Date(step.started_at).getTime()) / 1000),
+    )
+    parts.push(seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`)
+  }
+  if (step.model_used) parts.push(step.model_used)
+  // Modo fake não tem custo; mostrar "$0.00" ali seria mentira.
+  if (step.cost_usd != null) parts.push(`$${Number(step.cost_usd).toFixed(2)}`)
+
+  return parts.join(' · ')
 }
 
 function stepIcon(status: string): string {

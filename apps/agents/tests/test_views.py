@@ -173,3 +173,42 @@ class PrTitleTests(APITestCase):
 
         title = mock_gh.return_value.get_repo.return_value.create_pull.call_args.kwargs["title"]
         self.assertEqual(len(title), 70)
+
+
+class StepPayloadTests(APITestCase):
+    """RF-08: a tela de Run mostra duração e custo por fase — o custo
+    precisa sair no payload, o que não acontecia."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.project = Project.objects.create(name="teste")
+
+    def test_cost_is_exposed(self):
+        from decimal import Decimal
+
+        from apps.agents.models import TaskRunStep
+
+        task_run = TaskRun.objects.create(project=self.project, instruction="x")
+        TaskRunStep.objects.create(
+            task_run=task_run,
+            phase=TaskRunStep.Phase.EXECUTE,
+            status=TaskRunStep.Status.DONE,
+            model_used="sonnet",
+            cost_usd=Decimal("0.1234"),
+        )
+
+        response = self.client.get(f"/api/task-runs/{task_run.id}/")
+
+        step = response.data["steps"][0]
+        self.assertEqual(str(step["cost_usd"]), "0.1234")
+        self.assertEqual(step["model_used"], "sonnet")
+
+    def test_cost_is_null_in_fake_mode(self):
+        from apps.agents.models import TaskRunStep
+
+        task_run = TaskRun.objects.create(project=self.project, instruction="x")
+        TaskRunStep.objects.create(task_run=task_run, phase=TaskRunStep.Phase.DISCUSS)
+
+        response = self.client.get(f"/api/task-runs/{task_run.id}/")
+
+        self.assertIsNone(response.data["steps"][0]["cost_usd"])
