@@ -106,8 +106,10 @@ class WorkspaceTests(TestCase):
         )
         worktree = workspace.create_worktree(task_run, base_branch="main")
         (worktree / "NOVO.md").write_text("conteúdo novo\n")
-        _run(["git", "add", "."], cwd=worktree)
-        _run(["git", "commit", "-m", "novo arquivo"], cwd=worktree)
+        # Usa o helper de produção (já configura identidade do commit via
+        # -c) em vez de `git commit` cru — o ambiente de teste (CI, container
+        # non-root) pode não ter user.name/email git configurados global.
+        workspace.commit_worktree_changes(task_run, "novo arquivo")
 
         files = workspace.diff_stat(task_run)
         paths = [f["path"] for f in files]
