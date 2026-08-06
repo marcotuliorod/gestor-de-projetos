@@ -86,6 +86,34 @@ class RunTaskRunTests(TestCase):
         self.mock_notify.assert_called_once()
         self.assertIn("pronto para revisão", self.mock_notify.call_args[0][0])
 
+    @patch("apps.agents.tasks.collect_status.delay")
+    def test_finishing_does_not_refresh_board_while_sibling_still_running(self, mock_collect_status):
+        """Regressão RF-21: se outro TaskRun do mesmo projeto ainda está
+        RUNNING, terminar este não deve disparar o coletor passivo — isso
+        apagaria o RODANDO do Board enquanto a outra execução continua."""
+        sibling = TaskRun.objects.create(
+            project=self.project, instruction="outra tarefa em paralelo", state=TaskRun.State.RUNNING
+        )
+        task_run = TaskRun.objects.create(project=self.project, instruction="Adiciona um comentário")
+
+        run_task_run(task_run.id)
+
+        task_run.refresh_from_db()
+        self.assertEqual(task_run.state, TaskRun.State.NEEDS_REVIEW)
+        mock_collect_status.assert_not_called()
+
+        sibling.delete()
+
+    @patch("apps.agents.tasks.collect_status.delay")
+    def test_finishing_refreshes_board_when_no_sibling_running(self, mock_collect_status):
+        task_run = TaskRun.objects.create(project=self.project, instruction="Adiciona um comentário")
+
+        run_task_run(task_run.id)
+
+        task_run.refresh_from_db()
+        self.assertEqual(task_run.state, TaskRun.State.NEEDS_REVIEW)
+        mock_collect_status.assert_called_once_with(self.project.id)
+
     def test_missing_task_run_returns_none_without_raising(self):
         result = run_task_run(999999)
         self.assertIsNone(result)

@@ -42,7 +42,7 @@ services:
 
   worker:
     build: .
-    command: celery -A config worker --loglevel=info
+    command: sh -c "celery -A config worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-4}"
     volumes:
       - .:/app
       - agent-repos:/data/repos

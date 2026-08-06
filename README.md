@@ -15,7 +15,17 @@ end-to-end contra a API de verdade — ver "Execução de agentes" abaixo para
 os requisitos de segurança do container (não-root + bubblewrap/socat) —
 mais o **Token Budget Scheduler** (RF-11..13): orçamento semanal em USD
 (a partir do custo real de cada `TaskRunStep`, via `ResultMessage.total_cost_usd`),
-com pausa automática da fila noturna ao estourar o limiar.
+com pausa automática da fila noturna ao estourar o limiar — mais
+**notificações via Telegram** (RF-14): avisa quando um `TaskRun` precisa de
+revisão, falha, tem PR aberto, ou quando a fila noturna é pausada por
+orçamento (`apps/core/notifications.py`, best-effort e no-op se não
+configurado — ver `.env.example`) — mais **paralelismo de execução seguro**
+(RF-21): múltiplos `TaskRun`s rodam de verdade ao mesmo tempo (Celery
+`--concurrency`, configurável via `CELERY_WORKER_CONCURRENCY`), com um lock
+por projeto (Redis) protegendo o mirror git compartilhado quando duas
+execuções concorrentes são do mesmo projeto (`apps/agents/workspace.py`) e
+o Board não perde o estado "rodando" enquanto qualquer execução do projeto
+ainda está ativa (`apps/agents/tasks.py::_refresh_board_if_idle`).
 
 ## Stack
 
@@ -171,10 +181,9 @@ print(urllib.request.urlopen(req).status)
 
 ## Fora desta fase
 
-Headroom proxy · Caveman · notificação Telegram do aviso de pausa (RF-14) ·
-detecção automática de plano/limite via conta Anthropic (não há API
-confiável para isso) · isolamento por container Docker por tarefa (usamos
-`git worktree` num volume compartilhado) · paralelismo de execução (RF-21) ·
+Headroom proxy · Caveman · detecção automática de plano/limite via conta
+Anthropic (não há API confiável para isso) · isolamento por container
+Docker por tarefa (usamos `git worktree` num volume compartilhado) ·
 frontend/PWA · deploy VPS/Tailscale/Caddy.
 
 **Nota de arquitetura:** o PRD original previa disparar o GSD Core

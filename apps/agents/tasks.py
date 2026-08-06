@@ -52,7 +52,7 @@ def run_task_run(self, task_run_id):
     except Exception:
         logger.exception("run_task_run: falha ao preparar worktree para TaskRun %s", task_run_id)
         _fail(task_run, "Não consegui preparar o repositório local (clone/branch). Ver logs do worker.")
-        collect_status.delay(project.id)
+        _refresh_board_if_idle(project)
         return None
 
     context = {"instruction": task_run.instruction, "adjustment": task_run.adjustment_instructions}
@@ -60,14 +60,14 @@ def run_task_run(self, task_run_id):
         ok = _run_phase(task_run, phase, worktree_path, context)
         if not ok:
             _fail(task_run, context.get("last_error", f"Falha na fase {phase}."))
-            collect_status.delay(project.id)
+            _refresh_board_if_idle(project)
             return None
 
     task_run.summary = context.get("summary", "Alterações prontas para revisão.")[:280]
     task_run.state = TaskRun.State.NEEDS_REVIEW
     task_run.save(update_fields=["summary", "state", "updated_at"])
     send_telegram_message(f"🔍 {project.name}: pronto para revisão\n{task_run.instruction[:200]}")
-    collect_status.delay(project.id)
+    _refresh_board_if_idle(project)
     return task_run.id
 
 
@@ -137,6 +137,14 @@ def _fail(task_run, message: str) -> None:
     task_run.summary = message[:280]
     task_run.save(update_fields=["state", "summary", "updated_at"])
     send_telegram_message(f"❌ {task_run.project.name}: tarefa falhou\n{message[:200]}")
+
+
+def _refresh_board_if_idle(project) -> None:
+    """Só dispara o coletor passivo quando nenhum outro TaskRun deste
+    projeto ainda está RUNNING — evita que o fim de uma execução paralela
+    apague o RODANDO de outra ainda em andamento (RF-21)."""
+    if not TaskRun.objects.filter(project=project, state=TaskRun.State.RUNNING).exists():
+        collect_status.delay(project.id)
 
 
 def _flip_board_to_rodando(project) -> None:

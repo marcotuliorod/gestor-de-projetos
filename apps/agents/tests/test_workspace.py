@@ -1,5 +1,7 @@
 import subprocess
 import tempfile
+import threading
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -117,6 +119,45 @@ class WorkspaceTests(TestCase):
         novo = next(f for f in files if f["path"] == "NOVO.md")
         self.assertEqual(novo["added"], 1)
         self.assertEqual(novo["removed"], 0)
+
+    def test_create_worktree_same_project_concurrent_is_safe(self):
+        """Regressão RF-21: sem o lock por projeto em `_project_git_lock`,
+        duas TaskRuns do mesmo projeto chamando create_worktree ao mesmo
+        tempo competem pelos lockfiles internos do mirror compartilhado.
+        Injeta um sleep real dentro de ensure_mirror para forçar a
+        sobreposição (sem isso, as chamadas são rápidas demais para colidir
+        de forma confiável em um teste)."""
+        real_ensure_mirror = workspace.ensure_mirror
+
+        def slow_ensure_mirror(project):
+            result = real_ensure_mirror(project)
+            time.sleep(0.3)
+            return result
+
+        task_run_a = TaskRun.objects.create(project=self.project, instruction="a", base_branch="main")
+        task_run_b = TaskRun.objects.create(project=self.project, instruction="b", base_branch="main")
+
+        errors = []
+        results = {}
+
+        def worker(task_run, key):
+            try:
+                results[key] = workspace.create_worktree(task_run, base_branch="main")
+            except Exception as exc:
+                errors.append(exc)
+
+        with patch("apps.agents.workspace.ensure_mirror", side_effect=slow_ensure_mirror):
+            t1 = threading.Thread(target=worker, args=(task_run_a, "a"))
+            t2 = threading.Thread(target=worker, args=(task_run_b, "b"))
+            t1.start()
+            time.sleep(0.05)  # garante que t1 entra no lock primeiro
+            t2.start()
+            t1.join(timeout=10)
+            t2.join(timeout=10)
+
+        self.assertEqual(errors, [])
+        self.assertTrue(results["a"].exists())
+        self.assertTrue(results["b"].exists())
 
     def test_discard_worktree_removes_branch(self):
         task_run = TaskRun.objects.create(project=self.project, instruction="teste")

@@ -9,6 +9,7 @@ faz push exceto em `push_branch`, chamada só a partir do endpoint /approve/
 
 import logging
 import subprocess
+from contextlib import contextmanager
 from pathlib import Path
 
 from django.conf import settings
@@ -16,6 +17,36 @@ from django.conf import settings
 from apps.status.github_client import get_installation_token
 
 logger = logging.getLogger(__name__)
+
+# O mirror bare de um projeto é compartilhado entre TaskRuns concorrentes —
+# sem coordenação, duas chamadas simultâneas (fetch + worktree add/push/
+# branch -D) competem pelos mesmos lockfiles internos do git e podem deixar
+# o mirror num estado inconsistente (RF-21). Timeout generoso porque expira
+# sozinho se o processo cair sem liberar; blocking_timeout é quanto uma 2ª
+# operação espera a 1ª terminar antes de desistir.
+GIT_LOCK_TIMEOUT = 300
+GIT_LOCK_BLOCKING_TIMEOUT = 300
+
+
+@contextmanager
+def _project_git_lock(project):
+    import redis
+
+    r = redis.from_url(settings.REDIS_URL)
+    lock = r.lock(
+        f"git-mirror-lock:{project.id}",
+        timeout=GIT_LOCK_TIMEOUT,
+        blocking_timeout=GIT_LOCK_BLOCKING_TIMEOUT,
+    )
+    if not lock.acquire():
+        raise TimeoutError(f"Lock do repositório do projeto {project.id} ocupado por tempo demais.")
+    try:
+        yield
+    finally:
+        try:
+            lock.release()
+        except Exception:
+            pass  # pode já ter expirado (timeout) — ok, best-effort
 
 
 def _repo_root() -> Path:
@@ -78,17 +109,18 @@ def create_worktree(task_run, base_branch: str) -> Path:
     branch padrão do projeto (`base_branch`, resolvido via API do GitHub
     antes de chamar esta função — evita reparsear `git remote show`)."""
     project = task_run.project
-    mirror = ensure_mirror(project)
+    with _project_git_lock(project):
+        mirror = ensure_mirror(project)
 
-    branch = f"agent/task-{task_run.id}"
-    worktree_path = _worktree_path(task_run)
-    worktree_path.parent.mkdir(parents=True, exist_ok=True)
+        branch = f"agent/task-{task_run.id}"
+        worktree_path = _worktree_path(task_run)
+        worktree_path.parent.mkdir(parents=True, exist_ok=True)
 
-    _run(
-        ["git", "worktree", "add", "-b", branch, str(worktree_path), f"origin/{base_branch}"],
-        cwd=mirror,
-    )
-    return worktree_path
+        _run(
+            ["git", "worktree", "add", "-b", branch, str(worktree_path), f"origin/{base_branch}"],
+            cwd=mirror,
+        )
+        return worktree_path
 
 
 def commit_worktree_changes(task_run, message: str) -> bool:
@@ -120,21 +152,23 @@ def push_branch(task_run) -> None:
     """Push do branch do worktree para origin. Só deve ser chamado pelo
     endpoint /approve/ — nunca automaticamente."""
     project = task_run.project
-    mirror = ensure_mirror(project)
-    url = _authenticated_url(project)
-    _run(["git", "remote", "set-url", "origin", url], cwd=mirror)
-    _run(["git", "push", "origin", task_run.branch_name], cwd=mirror)
+    with _project_git_lock(project):
+        mirror = ensure_mirror(project)
+        url = _authenticated_url(project)
+        _run(["git", "remote", "set-url", "origin", url], cwd=mirror)
+        _run(["git", "push", "origin", task_run.branch_name], cwd=mirror)
 
 
 def discard_worktree(task_run) -> None:
     """Remove o worktree e o branch local. Não toca o remoto — nada foi
     empurrado ainda nesse ponto."""
     project = task_run.project
-    mirror = ensure_mirror(project)
-    worktree_path = _worktree_path(task_run)
-    if worktree_path.exists():
-        _run(["git", "worktree", "remove", "--force", str(worktree_path)], cwd=mirror)
-    _run(["git", "branch", "-D", task_run.branch_name], cwd=mirror)
+    with _project_git_lock(project):
+        mirror = ensure_mirror(project)
+        worktree_path = _worktree_path(task_run)
+        if worktree_path.exists():
+            _run(["git", "worktree", "remove", "--force", str(worktree_path)], cwd=mirror)
+        _run(["git", "branch", "-D", task_run.branch_name], cwd=mirror)
 
 
 def diff_stat(task_run) -> list[dict]:
