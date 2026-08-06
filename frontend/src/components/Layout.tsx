@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useRegisterSW } from 'virtual:pwa-register/react'
 import { BoardIcon, ConfigIcon, CotaIcon, FilaIcon } from './icons'
 import './Layout.css'
 
@@ -10,6 +11,8 @@ const NAV_ITEMS = [
 ]
 
 export function Layout() {
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW()
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -45,6 +48,15 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        {needRefresh && (
+          <div className="update-toast">
+            <span>Nova versão disponível</span>
+            <button type="button" className="btn-primary" onClick={() => updateServiceWorker(true)}>
+              Atualizar
+            </button>
+          </div>
+        )}
       </main>
     </div>
   )

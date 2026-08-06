@@ -25,7 +25,12 @@ configurado — ver `.env.example`) — mais **paralelismo de execução seguro*
 por projeto (Redis) protegendo o mirror git compartilhado quando duas
 execuções concorrentes são do mesmo projeto (`apps/agents/workspace.py`) e
 o Board não perde o estado "rodando" enquanto qualquer execução do projeto
-ainda está ativa (`apps/agents/tasks.py::_refresh_board_if_idle`).
+ainda está ativa (`apps/agents/tasks.py::_refresh_board_if_idle`) — mais
+**frontend instalável (PWA)**: manifest + service worker (`vite-plugin-pwa`),
+ícones gerados a partir de `favicon.svg`, e um toast de atualização em vez
+de recarregar sozinho no meio de uma revisão (`frontend/src/components/Layout.tsx`).
+Sem cache de API — o Board/Fila/Run mostram dados ao vivo, só o app shell é
+cacheado.
 
 ## Stack
 
@@ -91,6 +96,14 @@ cd frontend
 npm install
 npm run dev                          # http://localhost:5173, com proxy /api -> :8000
 ```
+
+**PWA:** o service worker só ativa em build de produção (`devOptions.enabled:
+false` em `vite.config.ts`) — para testar instalabilidade, use `npm run
+build && npm run preview` e abra a aba Application do DevTools (manifest,
+service worker, ícones). Os ícones em `frontend/public/pwa-*.png` /
+`maskable-icon-512x512.png` / `apple-touch-icon-180x180.png` / `favicon.ico`
+são gerados a partir de `favicon.svg` via `npm run generate-pwa-assets`
+(`@vite-pwa/assets-generator`) — rode de novo só se trocar a marca.
 
 Serviços:
 
@@ -184,7 +197,8 @@ print(urllib.request.urlopen(req).status)
 Headroom proxy · Caveman · detecção automática de plano/limite via conta
 Anthropic (não há API confiável para isso) · isolamento por container
 Docker por tarefa (usamos `git worktree` num volume compartilhado) ·
-frontend/PWA · deploy VPS/Tailscale/Caddy.
+suporte offline de dados no PWA (o app é um painel ao vivo — offline
+mostraria estado desatualizado) · deploy VPS/Tailscale/Caddy.
 
 **Nota de arquitetura:** o PRD original previa disparar o GSD Core
 (`@opengsd/gsd-core`) via subprocess com comandos `/gsd-*`. Pesquisa contra a

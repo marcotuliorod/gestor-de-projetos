@@ -161,7 +161,37 @@
   color: var(--text);
 }
 
+.update-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--raised);
+  color: var(--text);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+}
+.update-toast .btn-primary {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
 @media (min-width: 1024px) {
+  .update-toast {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    transform: none;
+  }
+
   .sidebar {
     display: flex;
   }
