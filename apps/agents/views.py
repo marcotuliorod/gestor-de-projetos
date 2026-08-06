@@ -58,7 +58,10 @@ class TaskRunViewSet(viewsets.ModelViewSet):
             gh = get_installation_client()
             repo = gh.get_repo(f"{task_run.project.repo_owner}/{task_run.project.repo_name}")
             pr = repo.create_pull(
-                title=task_run.instruction[:70],
+                # Primeira linha, não os primeiros 70 caracteres: instruções
+                # longas (o scaffold de um projeto novo, por exemplo) viravam
+                # um título cortado no meio de uma frase.
+                title=task_run.instruction.strip().splitlines()[0][:70],
                 body=task_run.summary or task_run.instruction,
                 head=task_run.branch_name,
                 base=task_run.base_branch,

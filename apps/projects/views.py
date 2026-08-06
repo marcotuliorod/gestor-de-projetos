@@ -143,8 +143,10 @@ def _scaffold_instruction(name: str, description: str, stack: str) -> str:
     alvo = stack or "a stack que fizer mais sentido para o objetivo descrito (justifique a escolha)"
     proposito = description or "(sem descrição — proponha algo coerente com o nome do projeto)"
     return (
-        f"Este repositório acabou de ser criado e está praticamente vazio. "
-        f"Monte o scaffold inicial do projeto '{name}'.\n\n"
+        # A primeira linha vira o título do PR (ver TaskRunViewSet.approve),
+        # então precisa fazer sentido sozinha.
+        f"Scaffold inicial do projeto {name}\n\n"
+        f"Este repositório acabou de ser criado e está praticamente vazio.\n\n"
         f"Propósito: {proposito}\n"
         f"Stack: {alvo}\n\n"
         "Entregue:\n"

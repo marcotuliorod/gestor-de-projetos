@@ -123,3 +123,53 @@ class TaskRunViewSetTests(APITestCase):
         task_run = TaskRun.objects.create(project=self.project, instruction="x", state=TaskRun.State.DONE)
         response = self.client.post(f"/api/task-runs/{task_run.id}/retry/")
         self.assertEqual(response.status_code, 409)
+
+
+class PrTitleTests(APITestCase):
+    """Regressão vista num PR real: o título saía dos primeiros 70
+    caracteres da instrução, o que cortava no meio da frase quando a
+    instrução era longa (caso do scaffold de projeto novo)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.project = Project.objects.create(name="teste", repo_url="https://github.com/ju/teste")
+
+    @patch("apps.agents.views.send_telegram_message")
+    @patch("apps.agents.views.get_installation_client")
+    @patch("apps.agents.views.workspace.push_branch")
+    def test_pr_title_is_the_first_line(self, mock_push, mock_gh, mock_notify):
+        pr = MagicMock()
+        pr.html_url = "https://github.com/ju/teste/pull/1"
+        mock_gh.return_value.get_repo.return_value.create_pull.return_value = pr
+
+        task_run = TaskRun.objects.create(
+            project=self.project,
+            instruction="Scaffold inicial do projeto loja\n\nEste repositório está vazio.\nMonte a estrutura.",
+            state=TaskRun.State.NEEDS_REVIEW,
+            branch_name="agent/task-1",
+            base_branch="main",
+        )
+        self.client.post(f"/api/task-runs/{task_run.id}/approve/")
+
+        title = mock_gh.return_value.get_repo.return_value.create_pull.call_args.kwargs["title"]
+        self.assertEqual(title, "Scaffold inicial do projeto loja")
+
+    @patch("apps.agents.views.send_telegram_message")
+    @patch("apps.agents.views.get_installation_client")
+    @patch("apps.agents.views.workspace.push_branch")
+    def test_long_single_line_is_still_truncated(self, mock_push, mock_gh, mock_notify):
+        pr = MagicMock()
+        pr.html_url = "https://github.com/ju/teste/pull/1"
+        mock_gh.return_value.get_repo.return_value.create_pull.return_value = pr
+
+        task_run = TaskRun.objects.create(
+            project=self.project,
+            instruction="x" * 200,
+            state=TaskRun.State.NEEDS_REVIEW,
+            branch_name="agent/task-2",
+            base_branch="main",
+        )
+        self.client.post(f"/api/task-runs/{task_run.id}/approve/")
+
+        title = mock_gh.return_value.get_repo.return_value.create_pull.call_args.kwargs["title"]
+        self.assertEqual(len(title), 70)
