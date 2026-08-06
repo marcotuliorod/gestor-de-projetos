@@ -135,7 +135,12 @@ export interface BudgetState {
   color: BudgetColor
   warn: boolean
   warn_text: string
+  /** Projeção de esgotamento; vazia quando não há base para projetar. */
+  projection: string
   should_pause_nightly: boolean
+  /** Faixa em que a fila noturna corta por peso (RF-13). */
+  prioritizing_by_weight: boolean
+  high_priority_weight: number
   personal_reserve_pct: number
   pause_threshold_pct: number
   window_start: string
@@ -244,6 +249,9 @@ export const api = {
     request<TaskRun>(`/api/task-runs/${id}/retry/`, { method: 'POST' }),
 
   getBudget: () => request<BudgetState>('/api/budget/'),
+
+  /** Só o resumo, sem histórico nem distribuição — usado pela barra sempre visível. */
+  getBudgetSummary: () => request<BudgetState>('/api/budget/?summary=1'),
 
   updateBudgetSettings: (data: {
     quota_total_usd?: number

@@ -184,7 +184,20 @@
   font-size: 13px;
 }
 
+/* A barra de cota aparece uma vez só: no topo do conteúdo no mobile (onde
+   não há sidebar) e dentro da sidebar no desktop. */
+.sidebar .cotabar {
+  display: none;
+}
+
 @media (min-width: 1024px) {
+  .sidebar .cotabar {
+    display: block;
+  }
+  .cotabar-mobile {
+    display: none;
+  }
+
   .update-toast {
     left: auto;
     right: 24px;

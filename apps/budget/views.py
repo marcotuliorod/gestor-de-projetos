@@ -14,6 +14,13 @@ class BudgetView(APIView):
 
     def get(self, request):
         state = budget_state()
+
+        # A barra sempre visível (RF-11) só precisa do resumo. weekly_history()
+        # faz seis agregações e distribution consulta projetos — caro demais
+        # para rodar a cada refresh de foco da aba.
+        if request.query_params.get("summary"):
+            return Response(state)
+
         start, end = current_window_bounds()
         used_by_project = usage_by_project(start, end)
 

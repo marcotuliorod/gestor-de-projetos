@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { CotaBar } from './CotaBar'
 import { BoardIcon, ConfigIcon, CotaIcon, FilaIcon } from './icons'
 import './Layout.css'
 
@@ -32,10 +33,12 @@ export function Layout() {
           <NavLink to="/projetos/novo" className="btn-primary">
             + Projeto
           </NavLink>
+          <CotaBar />
         </div>
       </aside>
 
       <main className="main-area">
+        <CotaBar className="cotabar-mobile" />
         <div className="main-content">
           <Outlet />
         </div>
