@@ -14,6 +14,40 @@ def _fake_project(**overrides):
     return p
 
 
+@override_settings(AGENTS_FAKE_MODE=True)
+class RunPhaseFakeTests(SimpleTestCase):
+    """Regressão: `TaskRunStep.cost_usd` é documentado como 'None em modo
+    fake' (ver o comentário do campo em models.py), mas `_run_phase_fake`
+    devolvia `cost_usd=0` — indistinguível de uma chamada real que custou
+    zero. Achado navegando a tela de Run de verdade: o cabeçalho do passo
+    mostrava "$0.00" para uma tarefa que nunca chamou a API."""
+
+    def test_execute_phase_cost_is_none_not_zero(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = agent_client.run_phase(
+                phase=TaskRunStep.Phase.EXECUTE,
+                model="haiku",
+                project=_fake_project(),
+                instruction="faz algo",
+                worktree_path=tmp,
+                context={},
+            )
+        self.assertIsNone(result.cost_usd)
+
+    def test_other_phases_cost_is_none_not_zero(self):
+        result = agent_client.run_phase(
+            phase=TaskRunStep.Phase.DISCUSS,
+            model="haiku",
+            project=_fake_project(),
+            instruction="faz algo",
+            worktree_path="/tmp/whatever",
+            context={},
+        )
+        self.assertIsNone(result.cost_usd)
+
+
 class BuildPromptTests(SimpleTestCase):
     def test_discuss_includes_instruction(self):
         prompt = agent_client._build_prompt(TaskRunStep.Phase.DISCUSS, _fake_project(), "faz algo", {})

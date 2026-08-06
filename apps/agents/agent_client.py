@@ -77,7 +77,7 @@ def _run_phase_fake(phase, model, project, instruction, worktree_path, context) 
             ok=True,
             detail=f"[fake] Escrevi uma anotação em AGENT_NOTES.md descrevendo a instrução (modelo: {model}).",
             context_updates={"execute_summary": "Anotação adicionada em AGENT_NOTES.md."},
-            cost_usd=0,
+            cost_usd=None,
         )
 
     detail_by_phase = {
@@ -90,7 +90,7 @@ def _run_phase_fake(phase, model, project, instruction, worktree_path, context) 
         ok=True,
         detail=detail_by_phase.get(phase, "[fake] ok"),
         context_updates={"summary": "Alterações de teste (modo fake) prontas para revisão."},
-        cost_usd=0,
+        cost_usd=None,
     )
 
 

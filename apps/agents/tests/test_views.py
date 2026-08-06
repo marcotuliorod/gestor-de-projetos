@@ -241,3 +241,61 @@ class ModelOverrideApiTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.data["model_override"], "")
+
+
+class StreamContentNegotiationTests(APITestCase):
+    """Regressão achada navegando o app de verdade: o `EventSource` nativo
+    do navegador manda `Accept: text/event-stream`, e nenhum renderer padrão
+    do DRF declara esse media type — a negociação de conteúdo rejeitava a
+    requisição com 406 antes do método `stream()` sequer rodar. O SSE só
+    parecia funcionar porque o polling de fallback (Run.tsx) cobria o
+    buraco silenciosamente."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.project = Project.objects.create(name="teste")
+
+    def test_event_source_accept_header_is_not_rejected(self):
+        task_run = TaskRun.objects.create(project=self.project, instruction="x")
+
+        response = self.client.get(
+            f"/api/task-runs/{task_run.id}/stream/", HTTP_ACCEPT="text/event-stream"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/event-stream")
+
+
+class StreamTerminationTests(APITestCase):
+    """Regressão real, achada navegando o app: `pubsub.listen()` bloqueia
+    para sempre — sem nenhuma mensagem publicada, a thread do generator
+    nunca retorna. Uma única aba com a tela de Run aberta travou o processo
+    do Uvicorn inteiro no reload seguinte, porque ele esperava essa "tarefa
+    de fundo" terminar. O generator agora consulta o estado do TaskRun e se
+    encerra sozinho assim que ele chega a um estado terminal."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.project = Project.objects.create(name="teste")
+
+    def test_stream_ends_immediately_for_a_finished_task_run(self):
+        task_run = TaskRun.objects.create(
+            project=self.project, instruction="x", state=TaskRun.State.NEEDS_REVIEW
+        )
+
+        response = self.client.get(
+            f"/api/task-runs/{task_run.id}/stream/", HTTP_ACCEPT="text/event-stream"
+        )
+
+        # Consumir o generator não deve travar — se travar, o teste key
+        # não retorna e o runner acaba por timeout.
+        chunks = list(response.streaming_content)
+        self.assertEqual(chunks, [])
+
+    def test_stream_ends_for_failed_and_discarded_states_too(self):
+        for state in (TaskRun.State.FAILED, TaskRun.State.DONE, TaskRun.State.DISCARDED):
+            task_run = TaskRun.objects.create(project=self.project, instruction="x", state=state)
+            response = self.client.get(
+                f"/api/task-runs/{task_run.id}/stream/", HTTP_ACCEPT="text/event-stream"
+            )
+            self.assertEqual(list(response.streaming_content), [], f"não encerrou para state={state}")

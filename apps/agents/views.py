@@ -1,9 +1,12 @@
 import logging
+from datetime import timedelta
 
 from django.conf import settings
 from django.http import StreamingHttpResponse
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
 from apps.core.notifications import send_telegram_message
@@ -15,6 +18,24 @@ from .serializers import TaskRunSerializer
 from .tasks import run_task_run
 
 logger = logging.getLogger(__name__)
+
+
+class EventStreamRenderer(BaseRenderer):
+    """Só existe para a negociação de conteúdo do DRF aceitar o
+    `Accept: text/event-stream` que todo `EventSource` de navegador manda.
+
+    Achado navegando o app de verdade: sem isso, `stream()` — que já monta
+    seu próprio `StreamingHttpResponse` e nunca passa pelo `render()` deste
+    renderer — respondia 406 antes mesmo do método rodar, porque nenhum dos
+    renderers padrão do DRF (JSON, Browsable API) declara esse media type.
+    O SSE só parecia funcionar porque o polling de fallback (Run.tsx) cobria
+    o buraco."""
+
+    media_type = "text/event-stream"
+    format = "txt"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
 
 
 class TaskRunViewSet(viewsets.ModelViewSet):
@@ -109,11 +130,21 @@ class TaskRunViewSet(viewsets.ModelViewSet):
         run_task_run.delay(task_run.id)
         return Response(TaskRunSerializer(task_run).data)
 
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=["get"], renderer_classes=[EventStreamRenderer])
     def stream(self, request, pk=None):
         """SSE best-effort via Redis pub/sub: cada mensagem é só um aviso
         para recarregar (GET normal) — os registros no banco são a fonte
-        de verdade, sem reconexão/backfill nesta versão."""
+        de verdade, sem reconexão/backfill nesta versão.
+
+        `pubsub.listen()` puro bloqueia para sempre à espera da próxima
+        mensagem — como o Django não tem como avisar este generator síncrono
+        que o cliente já desconectou, a thread nunca mais retorna (achado
+        navegando o app de verdade: uma única aba fechada travou o servidor
+        inteiro num reload do Uvicorn, que esperava essa thread "terminar").
+        Troca por polling com timeout, o que dá duas saídas naturais: o
+        TaskRun chegar a um estado terminal (nada mais será publicado nesse
+        canal) ou um teto de tempo absoluto como rede de segurança.
+        """
 
         def event_stream():
             import redis
@@ -121,8 +152,23 @@ class TaskRunViewSet(viewsets.ModelViewSet):
             r = redis.from_url(settings.REDIS_URL)
             pubsub = r.pubsub()
             pubsub.subscribe(f"task_run:{pk}")
-            for message in pubsub.listen():
-                if message["type"] == "message":
-                    yield f"data: {message['data'].decode()}\n\n"
+            try:
+                deadline = timezone.now() + timedelta(minutes=15)
+                while timezone.now() < deadline:
+                    # Checa antes de bloquear no socket: um TaskRun que já
+                    # terminou não vai publicar de novo neste canal, então
+                    # nem vale esperar — encerra na hora.
+                    still_active = TaskRun.objects.filter(
+                        pk=pk, state__in=(TaskRun.State.QUEUED, TaskRun.State.RUNNING)
+                    ).exists()
+                    if not still_active:
+                        return
+                    message = pubsub.get_message(timeout=15)
+                    if message and message["type"] == "message":
+                        yield f"data: {message['data'].decode()}\n\n"
+                    else:
+                        yield ": ping\n\n"  # nada em 15s, mas ainda ativo — mantém a conexão viva
+            finally:
+                pubsub.close()
 
         return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
