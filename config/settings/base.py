@@ -129,6 +129,11 @@ ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 # Enquanto o spike do SDK não roda, agent_client.run_phase() opera em modo
 # determinístico (sem chamar nenhuma API externa) — default True.
 AGENTS_FAKE_MODE = env.bool("AGENTS_FAKE_MODE", default=True)
+# Proxy Headroom (RF-15/RNF-02) — comprime tool outputs/logs antes de chegarem
+# à Anthropic. Vazio desliga o roteamento: a chamada vai direto pra Anthropic,
+# igual hoje (mesma degradação graciosa usada em GITHUB_PAT/Telegram). Ver
+# Dockerfile.headroom e o serviço `headroom` no docker-compose.yml.
+HEADROOM_PROXY_URL = env("HEADROOM_PROXY_URL", default="")
 
 # --- Notificações Telegram (RF-14) ---------------------------------------
 # Sem token/chat_id configurados, apps.core.notifications.send_telegram_message

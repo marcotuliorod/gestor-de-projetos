@@ -212,6 +212,14 @@ def _run_phase_real(phase, model, project, instruction, worktree_path, context) 
     options = ClaudeAgentOptions(
         cwd=str(worktree_path),
         model=MODEL_IDS.get(model, model),
+        # RF-15/RNF-02: roteia pelo proxy Headroom quando configurado — local,
+        # a chave da Anthropic nunca sai do container (o proxy só encaminha o
+        # cabeçalho de autorização que o CLI já manda). Confirmado direto no
+        # binário empacotado do SDK (`strings _bundled/claude`) que
+        # ANTHROPIC_BASE_URL é honrado de verdade, não presumido pela doc.
+        # Vazio (padrão) não roteia nada — chamada direta pra Anthropic, igual
+        # antes do Headroom existir.
+        env={"ANTHROPIC_BASE_URL": settings.HEADROOM_PROXY_URL} if settings.HEADROOM_PROXY_URL else {},
         # Sem humano para aprovar ferramentas — precisa rodar sem prompts.
         # Isolamento real vem do worktree dedicado + sandbox abaixo, não de
         # aprovação manual (que não existe neste contexto headless).

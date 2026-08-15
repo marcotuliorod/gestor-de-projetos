@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+# Serviço isolado — o proxy Headroom (RF-15/RNF-02) só é usado pelo worker de
+# agentes; empacotar numa imagem própria mantém a imagem principal (web/worker,
+# ver Dockerfile) livre dessa dependência.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir "headroom-ai[all]"
+
+EXPOSE 8787
+
+# --mode cache (não o default "token"): já temos cache de prompt nativo da
+# Anthropic com prefixo estável (RF-22, ver stable_project_context() em
+# apps/agents/agent_client.py). O modo "token" reescreve conteúdo de forma
+# mais agressiva/variável — isso quebraria silenciosamente o prefixo estável
+# e quebra o cache-hit já medido (25k gravados → 22k lidos, custo -80%). O
+# modo "cache" existe justamente para coexistir com cache de prompt nativo.
+CMD ["headroom", "proxy", "--port", "8787", "--host", "0.0.0.0", "--mode", "cache"]

@@ -25,6 +25,32 @@ services:
       timeout: 5s
       retries: 5
 
+  # Proxy Headroom (RF-15/RNF-02) — comprime tool outputs/logs antes de
+  # chegarem à Anthropic. Serviço próprio: só o worker de agentes usa,
+  # então fica fora da imagem principal (web/worker, ver Dockerfile).
+  # Sem HEADROOM_PROXY_URL configurado no .env, web/worker sobem mesmo sem
+  # este serviço no ar — o roteamento em apps/agents/agent_client.py é opt-in.
+  headroom:
+    build:
+      context: .
+      dockerfile: Dockerfile.headroom
+    # Achado real no log de start do próprio Headroom: "non-loopback bind
+    # with NO token — /v1/* is UNAUTHENTICATED". Porta publicada pro host
+    # aqui só por conveniência de dev local, mesma convenção já usada por
+    # `db`/`redis` acima (também sem auth, também publicados). Isso NÃO é
+    # seguro pra um deploy fora do laptop — antes de qualquer VPS (ver
+    # "Fora desta fase" no README), tirar este `ports:` (web/worker já
+    # alcançam via rede interna do compose, http://headroom:8787) e/ou
+    # configurar HEADROOM_PROXY_TOKEN.
+    ports:
+      - "8787:8787"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   web:
     build: .
     command: uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload

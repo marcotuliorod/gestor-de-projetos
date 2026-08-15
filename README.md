@@ -217,8 +217,7 @@ print(urllib.request.urlopen(req).status)
 
 ## Fora desta fase
 
-Headroom proxy (RF-15/RNF-02) · Caveman (RF-16) · cache de prompt via
-`CLAUDE.md` enxuto (RF-22) · criação de projeto do zero com scaffold
+criação de projeto do zero com scaffold
 (RF-02) · detecção automática de stack e seleção de repo via App (RF-01 —
 hoje só URL manual) · detecção automática de plano/limite via conta
 Anthropic (não há API confiável para isso) · isolamento por container
@@ -241,6 +240,52 @@ O repositório nasce com commit inicial (`auto_init`), licença e `.gitignore`
 da stack; o agente monta estrutura, README, lint e CI na primeira tarefa. Essa
 tarefa segue o caminho normal de revisão — nem um repositório recém-criado
 escapa da regra de nunca escrever direto na branch padrão (RNF-01/RF-10).
+
+## Proxy Headroom (RF-15/RNF-02)
+
+Comprime tool outputs/logs antes de chegarem à Anthropic — roda como serviço
+próprio (`docker-compose.yml`, `Dockerfile.headroom`), separado da imagem
+principal porque só o worker de agentes usa. Local-first: a chave da
+Anthropic nunca sai do container, o proxy só encaminha o cabeçalho de
+autorização que o CLI já manda.
+
+Desligado por padrão — `HEADROOM_PROXY_URL` vazio no `.env` faz as chamadas
+irem direto pra Anthropic, igual antes do proxy existir. Para ligar:
+
+```bash
+docker compose up -d headroom     # confirma o healthcheck antes de usar
+# no .env:
+HEADROOM_PROXY_URL=http://headroom:8787
+docker compose up -d --force-recreate worker
+```
+
+O roteamento está em `apps/agents/agent_client.py` — `ClaudeAgentOptions.env`
+recebe `ANTHROPIC_BASE_URL` apontando pro proxy, opção confirmada real
+(`strings` no CLI empacotado do SDK) e não presumida pela documentação.
+`--mode cache` (não o default `token`) porque já temos cache de prompt
+nativo com prefixo estável (RF-22) — o modo padrão reescreveria esse prefixo
+de forma variável e quebraria o cache-hit já medido ali.
+
+**Medido contra a API real** (`agent_client.run_phase`, mesma instrução nas
+quatro chamadas — a primeira comparação direta×proxy tinha instruções
+diferentes entre os dois lados e deu um resultado enganoso, descartado):
+
+| | chamada fria | chamada quente (cache) |
+|---|---|---|
+| direto | $0,0332 (25.562 tokens gravados) | $0,0040 (25.562 lidos do cache) |
+| via Headroom | $0,0205 (15.183 tokens gravados) | $0,0027 (15.183 lidos do cache) |
+
+~40% menos tokens gravados no cache, ~35% mais barato mesmo na chamada fria,
+e o cache nativo da Anthropic (RF-22) continua funcionando através do
+proxy — confirmado que uma fase Execute real, com `Write` de arquivo,
+sobrevive ao proxy sem corromper o tool-calling (achado o `ok.txt` criado
+com o conteúdo exato pedido).
+
+**Risco de segurança encontrado no próprio log de start do Headroom:**
+`/v1/*` roda sem autenticação quando o bind não é loopback. A porta 8787
+fica publicada pro host só por conveniência de dev local (mesma convenção já
+usada por `db`/`redis` neste compose) — **não é seguro fora do laptop**, ver
+comentário no `docker-compose.yml`.
 
 ## Desvios em relação ao PRD
 
@@ -265,8 +310,22 @@ e a abertura do PR só acontecem no `/approve/`, após revisão humana. Isso é
 mais restritivo que o PRD (que descreve 5 fases contínuas) e existe para
 garantir RNF-01/RF-10.
 
-**Consequência a registrar:** as três alavancas de eficiência de token do
-PRD (RF-15 Headroom, RF-16 Caveman, RF-22 cache de prompt) estão todas
-ausentes. O controle de custo hoje é **reativo** — o Token Budget Scheduler
-(RF-11..13) mede o custo real de cada `TaskRunStep` e pausa a fila noturna
-no limiar, mas nada reduz o consumo por tarefa.
+**4. Caveman não entrou (RF-16).** Verificado contra o README real do
+projeto: `/caveman-compress`, `/caveman-commit` e `/caveman-review` — os
+três comandos que o RF-16 pede — são **comandos de slash, só rodam dentro
+de uma sessão de chat interativa**, sem equivalente de CLI headless. Mesma
+categoria de bloqueio do GSD Core (item 1). A CLI standalone do Caveman
+(`shrink`, `mem`, `stats`, `learn`, `convert`) não cobre "comprima este
+arquivo automaticamente no cadastro do projeto", e o motor de compressão é
+licenciado BSL-1.1 — mais um motivo para não trazer a dependência sem
+entregar o que o requisito pede de fato. Decisão: não implementado, sem
+substituto autoral fingindo ser o Caveman.
+
+**Sobre as três alavancas de eficiência de token do PRD:** RF-22 (cache de
+prompt) está implementado e medido contra a API real — ver acima. RF-15
+(Headroom) está implementado como proxy real entre `agent_client.py` e a
+Anthropic — ver `docker-compose.yml`/`Dockerfile.headroom`. RF-16 (Caveman)
+é o único que segue ausente, pelo motivo documentado no item 4. O controle
+de custo deixou de ser só reativo: o Token Budget Scheduler (RF-11..13)
+segue medindo e pausando por limiar, mas agora RF-22 e RF-15 reduzem o
+consumo por tarefa de verdade, não só o medem.

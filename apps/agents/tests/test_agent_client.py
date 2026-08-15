@@ -145,6 +145,43 @@ class RunPhaseRealSafetySettingsTests(SimpleTestCase):
 
 
 @override_settings(AGENTS_FAKE_MODE=False)
+class HeadroomRoutingTests(SimpleTestCase):
+    """RF-15/RNF-02: roteamento pelo proxy Headroom é opt-in via
+    HEADROOM_PROXY_URL — vazio (padrão) não pode mudar o comportamento de
+    quem nunca configurou o proxy, mesma degradação graciosa já usada em
+    GITHUB_PAT/Telegram neste projeto."""
+
+    def _captured_options(self):
+        captured = {}
+
+        async def fake_query(*, prompt, options=None, transport=None):
+            captured["options"] = options
+            return
+            yield  # pragma: no cover
+
+        with patch("claude_agent_sdk.query", fake_query):
+            agent_client.run_phase(
+                phase=TaskRunStep.Phase.EXECUTE,
+                model="sonnet",
+                project=_fake_project(),
+                instruction="faz algo",
+                worktree_path="/tmp/whatever",
+                context={},
+            )
+        return captured["options"]
+
+    @override_settings(HEADROOM_PROXY_URL="")
+    def test_empty_url_does_not_set_anthropic_base_url(self):
+        options = self._captured_options()
+        self.assertNotIn("ANTHROPIC_BASE_URL", options.env)
+
+    @override_settings(HEADROOM_PROXY_URL="http://headroom:8787")
+    def test_configured_url_routes_through_the_proxy(self):
+        options = self._captured_options()
+        self.assertEqual(options.env["ANTHROPIC_BASE_URL"], "http://headroom:8787")
+
+
+@override_settings(AGENTS_FAKE_MODE=False)
 class RunPhaseRealTests(SimpleTestCase):
     def test_successful_result_maps_to_ok_phase_result(self):
         from claude_agent_sdk import ResultMessage
